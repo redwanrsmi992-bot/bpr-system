@@ -639,30 +639,6 @@ elif menu == "رفع ملف عمليات":
             st.error("حدث خطأ اثناء قراءة الملف")
             st.code(str(e))
 
-# ================== رفع صورة واستخراج البيانات (OCR) ==================
-elif menu == "رفع صورة OCR":
-    st.subheader("رفع صورة واستخراج بيانات العملية")
-    st.markdown("ارفع صورة تحتوي على نص العملية. سيقوم النظام باستخراج النص تلقائيا")
-    
-    uploaded_image = st.file_uploader("اختر صورة", type=["png", "jpg", "jpeg"])
-    
-    if uploaded_image is not None:
-        st.image(uploaded_image, caption="الصورة المرفوعة", use_container_width=True)
-        
-        if st.button("استخراج النص من الصورة"):
-            try:
-                import pytesseract
-                from PIL import Image
-                image = Image.open(uploaded_image)
-                extracted_text = pytesseract.image_to_string(image, lang='ara+eng')
-                st.subheader("النص المستخرج")
-                st.text_area("النص المستخرج", extracted_text, height=300)
-                st.info("يمكنك نسخ هذا النص واستخدامه في صفحة اضافة خطوات")
-            except ImportError:
-                st.error("مكتبة Tesseract غير مثبتة")
-            except Exception as e:
-                st.error(f"حدث خطأ: {e}")
-
 # ================== دليل الاستخدام ==================
 elif menu == "دليل الاستخدام":
     st.subheader("دليل استخدام نظام اعادة هندسة العمليات")
