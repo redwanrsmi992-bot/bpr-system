@@ -91,25 +91,49 @@ menu = st.sidebar.radio("📌 القائمة", [
 ])
 
 # ================== الصفحة الرئيسية ==================
+# ================== الصفحة الرئيسية ==================
 if menu == "الرئيسية":
     st.subheader("📋 قائمة العمليات")
     processes = get_processes()
     if processes:
-        data = []
         for p in processes:
             with app.app_context():
                 eff = Process.query.get(p.id).flow_efficiency
                 cost = Process.query.get(p.id).annual_cost
-            data.append({
-                "المعرف": p.id,
-                "اسم العملية": p.name,
-                "الفئة": p.category,
-                "التكرار السنوي": p.annual_frequency,
-                "الحالة": p.status,
-                "كفاءة التدفق": f"{eff:.2f}%",
-                "التكلفة السنوية": f"{cost:,.2f} د.أ"
-            })
-        st.dataframe(pd.DataFrame(data), use_container_width=True)
+            with st.expander(f"{p.id} - {p.name} ({p.category})"):
+                col1, col2, col3 = st.columns(3)
+                col1.metric("كفاءة التدفق", f"{eff:.2f}%")
+                col2.metric("التكلفة السنوية", f"{cost:,.2f} د.أ")
+                col3.metric("التكرار السنوي", p.annual_frequency)
+                
+                # أزرار التعديل والحذف
+                col_edit, col_del = st.columns(2)
+                with col_edit:
+                    if st.button("✏️ تعديل", key=f"edit_{p.id}"):
+                        st.session_state[f"editing_{p.id}"] = True
+                with col_del:
+                    if st.button("🗑️ حذف", key=f"del_{p.id}"):
+                        delete_process_from_db(p.id)
+                        st.success("تم الحذف!")
+                        st.rerun()
+                
+                # نموذج التعديل
+                if st.session_state.get(f"editing_{p.id}", False):
+                    with st.form(f"edit_form_{p.id}"):
+                        new_name = st.text_input("اسم العملية", value=p.name)
+                        new_cat = st.selectbox("الفئة", ["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"], 
+                                               index=["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"].index(p.category))
+                        new_freq = st.number_input("التكرار السنوي", min_value=1, value=p.annual_frequency)
+                        new_status = st.selectbox("الحالة", ["غير_مبدوء", "تحت_الدراسة", "مكتمل"],
+                                                  index=["غير_مبدوء", "تحت_الدراسة", "مكتمل"].index(p.status))
+                        if st.form_submit_button("💾 حفظ التعديلات"):
+                            update_process_in_db(p.id, new_name, new_cat, new_freq, new_status)
+                            st.session_state[f"editing_{p.id}"] = False
+                            st.success("تم التعديل!")
+                            st.rerun()
+                        if st.form_submit_button("❌ إلغاء"):
+                            st.session_state[f"editing_{p.id}"] = False
+                            st.rerun()
     else:
         st.info("لا توجد عمليات بعد. أضف عملية من القائمة الجانبية.")
 
