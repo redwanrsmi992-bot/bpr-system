@@ -97,12 +97,69 @@ if menu == "الرئيسية":
 # ================== إضافة موظف ==================
 elif menu == "إضافة موظف":
     st.subheader("👤 إضافة موظف جديد")
+    
+    # قائمة المسميات الوظيفية الشائعة في القطاع العام
+    job_titles = [
+        "اختر المسمى الوظيفي...",
+        "موظف إدخال بيانات",
+        "محاسب / مدقق مالي",
+        "رئيس قسم",
+        "مدير",
+        "مدير عام",
+        "مخصص (أدخل يدوياً)"
+    ]
+    
     with st.form("add_emp"):
-        title = st.text_input("المسمى الوظيفي")
-        cost = st.number_input("الراتب الشهري (دينار)", min_value=100, value=5000)
+        title_choice = st.selectbox("المسمى الوظيفي", job_titles)
+        
+        if title_choice == "مخصص (أدخل يدوياً)":
+            title = st.text_input("أدخل المسمى الوظيفي يدوياً")
+        else:
+            title = title_choice
+        
+        # نطاق الراتب حسب المسمى
+        st.markdown("**نطاق الراتب الشهري (دينار أردني)**")
+        
+        # تحديد النطاق الافتراضي حسب المسمى
+        if title_choice == "موظف إدخال بيانات":
+            default_range = (500, 700)
+        elif title_choice == "محاسب / مدقق مالي":
+            default_range = (700, 1000)
+        elif title_choice == "رئيس قسم":
+            default_range = (1000, 1300)
+        elif title_choice == "مدير":
+            default_range = (1300, 1800)
+        elif title_choice == "مدير عام":
+            default_range = (2000, 3000)
+        else:
+            default_range = (500, 1000)
+        
+        min_salary, max_salary = st.slider(
+            "اختر نطاق الراتب (من - إلى)",
+            min_value=300,
+            max_value=5000,
+            value=default_range,
+            step=50
+        )
+        
+        # الراتب المعتمد = متوسط النطاق
+        avg_salary = (min_salary + max_salary) // 2
+        
+        st.info(f"💰 الراتب المعتمد للحساب: **{avg_salary} دينار** (متوسط النطاق من {min_salary} إلى {max_salary})")
+        
         if st.form_submit_button("حفظ"):
-            add_employee_to_db(title, cost)
-            st.success(f"تمت إضافة الموظف: {title}")
+            if title and title != "اختر المسمى الوظيفي...":
+                add_employee_to_db(title, float(avg_salary))
+                st.success(f"تمت إضافة الموظف: {title} - الراتب المعتمد: {avg_salary} د.أ")
+            else:
+                st.error("الرجاء اختيار أو إدخال المسمى الوظيفي")
+    
+    # عرض الموظفين الحاليين
+    emps = get_employees()
+    if emps:
+        st.subheader("الموظفون الحاليون")
+        edata = [{"المعرف": e.id, "المسمى": e.title, "الراتب المعتمد": f"{e.monthly_cost:.0f} د.أ"} for e in emps]
+        st.dataframe(pd.DataFrame(edata))
     emps = get_employees()
     if emps:
         st.subheader("الموظفون الحاليون")
