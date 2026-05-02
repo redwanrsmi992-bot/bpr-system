@@ -60,23 +60,21 @@ def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
                  system_used=sys_used, waste_category=waste)
         db.session.add(s)
         db.session.commit()
-def delete_process_from_db(pid):
+def delete_employee_from_db(eid):
     with app.app_context():
-        p = Process.query.get(pid)
-        if p:
-            db.session.delete(p)
+        e = Employee.query.get(eid)
+        if e:
+            db.session.delete(e)
             db.session.commit()
             return True
         return False
 
-def update_process_in_db(pid, name, category, freq, status):
+def update_employee_in_db(eid, title, cost):
     with app.app_context():
-        p = Process.query.get(pid)
-        if p:
-            p.name = name
-            p.category = category
-            p.annual_frequency = freq
-            p.status = status
+        e = Employee.query.get(eid)
+        if e:
+            e.title = title
+            e.monthly_cost = cost
             db.session.commit()
             return True
         return False
