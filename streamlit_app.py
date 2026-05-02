@@ -42,11 +42,51 @@ def add_process_to_db(name, category, freq, status):
         db.session.add(p)
         db.session.commit()
 
+def update_process_in_db(pid, name, category, freq, status):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            p.name = name
+            p.category = category
+            p.annual_frequency = freq
+            p.status = status
+            db.session.commit()
+            return True
+        return False
+
+def delete_process_from_db(pid):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            db.session.delete(p)
+            db.session.commit()
+            return True
+        return False
+
 def add_employee_to_db(title, cost):
     with app.app_context():
         e = Employee(title=title, monthly_cost=cost)
         db.session.add(e)
         db.session.commit()
+
+def update_employee_in_db(eid, title, cost):
+    with app.app_context():
+        e = Employee.query.get(eid)
+        if e:
+            e.title = title
+            e.monthly_cost = cost
+            db.session.commit()
+            return True
+        return False
+
+def delete_employee_from_db(eid):
+    with app.app_context():
+        e = Employee.query.get(eid)
+        if e:
+            db.session.delete(e)
+            db.session.commit()
+            return True
+        return False
 
 def get_employees():
     with app.app_context():
@@ -60,24 +100,7 @@ def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
                  system_used=sys_used, waste_category=waste)
         db.session.add(s)
         db.session.commit()
-def delete_employee_from_db(eid):
-    with app.app_context():
-        e = Employee.query.get(eid)
-        if e:
-            db.session.delete(e)
-            db.session.commit()
-            return True
-        return False
 
-def update_employee_in_db(eid, title, cost):
-    with app.app_context():
-        e = Employee.query.get(eid)
-        if e:
-            e.title = title
-            e.monthly_cost = cost
-            db.session.commit()
-            return True
-        return False
 # ---- القائمة الجانبية ----
 menu = st.sidebar.radio("📌 القائمة", [
     "الرئيسية",
@@ -88,7 +111,6 @@ menu = st.sidebar.radio("📌 القائمة", [
     "📖 دليل الاستخدام"
 ])
 
-# ================== الصفحة الرئيسية ==================
 # ================== الصفحة الرئيسية ==================
 if menu == "الرئيسية":
     st.subheader("📋 قائمة العمليات")
@@ -104,7 +126,6 @@ if menu == "الرئيسية":
                 col2.metric("التكلفة السنوية", f"{cost:,.2f} د.أ")
                 col3.metric("التكرار السنوي", p.annual_frequency)
                 
-                # أزرار التعديل والحذف
                 col_edit, col_del = st.columns(2)
                 with col_edit:
                     if st.button("✏️ تعديل", key=f"edit_{p.id}"):
@@ -115,33 +136,32 @@ if menu == "الرئيسية":
                         st.success("تم الحذف!")
                         st.rerun()
                 
-                # نموذج التعديل
                 if st.session_state.get(f"editing_{p.id}", False):
                     with st.form(f"edit_form_{p.id}"):
                         new_name = st.text_input("اسم العملية", value=p.name)
-                        new_cat = st.selectbox("الفئة", ["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"], 
-                                               index=["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"].index(p.category))
+                        cats = ["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"]
+                        new_cat = st.selectbox("الفئة", cats, index=cats.index(p.category) if p.category in cats else 0)
                         new_freq = st.number_input("التكرار السنوي", min_value=1, value=p.annual_frequency)
-                        new_status = st.selectbox("الحالة", ["غير_مبدوء", "تحت_الدراسة", "مكتمل"],
-                                                  index=["غير_مبدوء", "تحت_الدراسة", "مكتمل"].index(p.status))
-                        if st.form_submit_button("💾 حفظ التعديلات"):
-                            update_process_in_db(p.id, new_name, new_cat, new_freq, new_status)
-                            st.session_state[f"editing_{p.id}"] = False
-                            st.success("تم التعديل!")
-                            st.rerun()
-                        if st.form_submit_button("❌ إلغاء"):
-                            st.session_state[f"editing_{p.id}"] = False
-                            st.rerun()
+                        stats = ["غير_مبدوء", "تحت_الدراسة", "مكتمل"]
+                        new_status = st.selectbox("الحالة", stats, index=stats.index(p.status) if p.status in stats else 0)
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            if st.form_submit_button("💾 حفظ التعديلات"):
+                                update_process_in_db(p.id, new_name, new_cat, new_freq, new_status)
+                                st.session_state[f"editing_{p.id}"] = False
+                                st.success("تم التعديل!")
+                                st.rerun()
+                        with col_cancel:
+                            if st.form_submit_button("❌ إلغاء"):
+                                st.session_state[f"editing_{p.id}"] = False
+                                st.rerun()
     else:
         st.info("لا توجد عمليات بعد. أضف عملية من القائمة الجانبية.")
 
 # ================== إضافة موظف ==================
-# ================== إضافة موظف ==================
-# ================== إضافة موظف ==================
 elif menu == "إضافة موظف":
     st.subheader("👤 إدارة الموظفين")
     
-    # --- إضافة موظف جديد ---
     with st.expander("➕ إضافة موظف جديد", expanded=False):
         with st.form("add_emp"):
             title = st.text_input("المسمى الوظيفي")
@@ -160,7 +180,6 @@ elif menu == "إضافة موظف":
                 else:
                     st.error("الرجاء إدخال المسمى الوظيفي")
     
-    # --- قائمة الموظفين الحاليين مع تعديل وحذف ---
     emps = get_employees()
     if emps:
         st.subheader("📋 الموظفون الحاليون")
@@ -193,6 +212,7 @@ elif menu == "إضافة موظف":
                                 st.rerun()
     else:
         st.info("لا يوجد موظفين بعد.")
+
 # ================== إضافة عملية ==================
 elif menu == "إضافة عملية":
     st.subheader("➕ إضافة عملية جديدة")
@@ -205,6 +225,7 @@ elif menu == "إضافة عملية":
             if name:
                 add_process_to_db(name, category, freq, status)
                 st.success(f"تمت إضافة العملية: {name}")
+                st.rerun()
             else:
                 st.error("الرجاء إدخال اسم العملية")
 
@@ -235,6 +256,7 @@ elif menu == "إضافة خطوات":
                 eid = int(eid_sel.split(" - ")[0])
                 add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
                 st.success("تمت إضافة الخطوة!")
+                st.rerun()
 
 # ================== لوحة التحكم ==================
 elif menu == "لوحة التحكم":
@@ -295,59 +317,55 @@ elif menu == "📖 دليل الاستخدام":
     
     with st.expander("🏠 1. الرئيسية", expanded=True):
         st.markdown("""
-        **ماذا ترى؟** جدول بجميع العمليات التي أضفتها.
-        - **المعرف:** رقم تسلسلي تلقائي.
-        - **اسم العملية:** الاسم الذي أدخلته.
-        - **الفئة:** استراتيجية، انتصار سريع، روتينية، للدراسة.
-        - **كفاءة التدفق:** النسبة المحسوبة تلقائياً (هدفك رفعها).
-        - **التكلفة السنوية:** تكلفة العملية = وقت العمل × راتب الموظف × التكرار السنوي.
+        **ماذا ترى؟** قائمة بجميع العمليات في صناديق قابلة للطي.
+        - كل صندوق يعرض: كفاءة التدفق، التكلفة السنوية، التكرار السنوي.
+        - **✏️ تعديل:** لتغيير اسم العملية، الفئة، التكرار، أو الحالة.
+        - **🗑️ حذف:** لحذف العملية نهائياً.
         """)
     
-    with st.expander("👤 2. إضافة موظف"):
+    with st.expander("👤 2. إدارة الموظفين"):
         st.markdown("""
-        **لماذا؟** لحساب تكلفة كل خطوة بدقة.
-        - أدخل **المسمى الوظيفي** و **الراتب الشهري**.
-        - اضغط **حفظ**.
-        - ستظهر قائمة بجميع الموظفين المضافين.
+        **إضافة موظف جديد:**
+        - اكتب المسمى الوظيفي.
+        - اختر نطاق الراتب من شريط التمرير.
+        - يحسب التطبيق المتوسط تلقائياً ويستخدمه في حسابات التكلفة.
+        
+        **تعديل/حذف موظف:**
+        - اضغط ✏️ لتغيير المسمى أو الراتب.
+        - اضغط 🗑️ لحذف الموظف.
         """)
     
     with st.expander("➕ 3. إضافة عملية"):
         st.markdown("""
-        **لماذا؟** لتسجيل عملية حكومية تريد تحسينها.
-        
         | الحقل | الوصف |
         |-------|-------|
         | اسم العملية | مثل: "المناقلات المالية" |
         | الفئة | استراتيجية، انتصار_سريع، روتينية، للدراسة |
-        | التكرار السنوي | كم مرة تحدث في السنة (تقريباً) |
-        | الحالة | في أي مرحلة أنت الآن |
+        | التكرار السنوي | كم مرة تحدث في السنة |
+        | الحالة | غير_مبدوء، تحت_الدراسة، مكتمل |
         """)
     
     with st.expander("📝 4. إضافة خطوات"):
         st.markdown("""
-        **لماذا؟** لتفكيك العملية إلى خطواتها التفصيلية. هذا قلب النظام.
-        
         | الحقل | الوصف | مثال |
         |-------|-------|------|
-        | اختر العملية | العملية المستهدفة | المناقلات المالية |
-        | اختر الموظف | من يقوم بهذه الخطوة | مدقق مالي |
+        | العملية | اختر العملية المستهدفة | المناقلات المالية |
+        | الموظف | من يقوم بهذه الخطوة | مدقق مالي |
         | رقم الترتيب | تسلسل الخطوة | 1, 2, 3... |
         | اسم الخطوة | وصف مختصر | "انتظار توقيع المدير" |
         | وقت المعالجة | دقائق العمل الفعلي | 5 |
         | وقت الانتظار | دقائق الانتظار | 1440 (يوم كامل) |
-        | نوع الخطوة | VA = قيمة مضافة، BNVA = ضرورية، NVA = هدر خالص |
-        | النظام المستخدم | Oracle, GFMIS, ورقي, Outlook... |
-        | فئة الهدر | للخطوات NVA فقط | انتظار، موافقات_زائدة... |
+        | نوع الخطوة | VA = قيمة، BNVA = ضرورية، NVA = هدر |
+        | النظام | Oracle, GFMIS, ورقي, Outlook... |
+        | فئة الهدر | للخطوات NVA فقط | انتظار، موافقات_زائدة |
         """)
     
     with st.expander("📊 5. لوحة التحكم"):
         st.markdown("""
-        **لماذا؟** لمشاهدة التحليل الكامل للعملية.
-        
-        اختر عملية من القائمة المنسدلة لتشاهد:
+        اختر عملية لتشاهد:
         - **3 بطاقات:** كفاءة التدفق، زمن الدورة، التكلفة السنوية.
-        - **الرسم البياني الشريطي:** أخضر = وقت عمل، أحمر = وقت انتظار (الهدر).
-        - **الرسم البياني الدائري:** نسبة العمل المفيد مقابل الهدر.
+        - **الرسم الشريطي:** أخضر = وقت عمل، أحمر = وقت انتظار.
+        - **الرسم الدائري:** العمل المفيد مقابل الهدر.
         - **جدول تفصيلي** لجميع الخطوات.
         """)
     
@@ -364,8 +382,8 @@ elif menu == "📖 دليل الاستخدام":
     
     with st.expander("💡 7. نصائح سريعة"):
         st.markdown("""
-        - ⏱️ **لتحويل الأيام إلى دقائق:** 1440 دقيقة = يوم عمل واحد، 2880 = يومان، 10080 = أسبوع.
-        - 🚀 استخدم فئة **"انتصار_سريع"** للعمليات السهلة التي تريد إنجازها أولاً وتبني سمعتك.
-        - 📊 كل عملية تدخلها وتكمل تحليلها تتحول إلى **قصة نجاح** تعرضها على المدير العام.
-        - 🎯 تذكر: الهدف ليس توثيق العمليات، بل **كشف الهدر** ثم **القضاء عليه**.
+        - ⏱️ 1440 دقيقة = يوم عمل، 2880 = يومان، 10080 = أسبوع.
+        - 🚀 فئة **انتصار_سريع** = عمليات سهلة تبني سمعتك أولاً.
+        - 📊 كل عملية مكتملة = قصة نجاح للإدارة.
+        - 🎯 الهدف: كشف الهدر ثم القضاء عليه.
         """)
