@@ -7,44 +7,43 @@ from models import db, Employee, Process, Step
 # ---- إعداد التطبيق ----
 st.set_page_config(page_title="نظام إعادة هندسة العمليات", layout="wide")
 
-# ---- حماية بكلمة مرور ----
+# ---- حماية بكلمة مرور واحدة للفريق ----
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
     st.title("🔐 نظام إعادة هندسة العمليات")
     st.markdown("---")
-    
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("### 👥 دخول أعضاء الفريق")
-        username = st.text_input("👤 اسم المستخدم")
-        password = st.text_input("🔒 كلمة المرور", type="password")
-        
+        password = st.text_input("🔒 أدخل كلمة المرور", type="password")
+
         if st.button("🚪 دخول", use_container_width=True):
-           allowed_users = {
-    "اسم_مستخدم_جديد": "كلمة_مرور_جديدة",
-}
-            if username in allowed_users and allowed_users[username] == password:
+            if password == "BPR2026":
                 st.session_state.authenticated = True
-                st.session_state.user = username
                 st.rerun()
             else:
-                st.error("❌ اسم المستخدم أو كلمة المرور خاطئة")
-        
+                st.error("❌ كلمة المرور خاطئة")
+
         st.markdown("---")
-        st.caption("للاستفسار عن بيانات الدخول، تواصل مع مسؤول النظام")
-    
+        st.caption("للاستفسار عن كلمة المرور، تواصل مع مسؤول النظام")
+
     st.stop()
 
 # ---- التطبيق الرئيسي (بعد تسجيل الدخول) ----
 st.title("🔍 نظام إعادة هندسة العمليات - دائرة الموازنة العامة")
-st.sidebar.success(f"👋 مرحباً، {st.session_state.user}")
 
 if st.sidebar.button("🚪 تسجيل الخروج"):
     st.session_state.authenticated = False
-    st.session_state.user = ""
     st.rerun()
+
+# ---- إعداد قاعدة البيانات ----
+# ... تابع باقي الكود من هنا ...
+
+# ---- إعداد قاعدة البيانات ----
+# ... تابع باقي الكود من هنا ...
 
 # ---- إعداد قاعدة البيانات ----
 app = Flask(__name__)
