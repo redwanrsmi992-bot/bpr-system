@@ -145,6 +145,7 @@ menu = st.sidebar.radio("📌 القائمة", [
     "إضافة عملية",
     "إضافة خطوات",
     "لوحة التحكم",
+    "🗺️ رحلة العميل",
     "📖 دليل الاستخدام"
 ])
 
@@ -347,7 +348,205 @@ elif menu == "لوحة التحكم":
             st.info("لا توجد خطوات لهذه العملية. أضف خطوات من القائمة الجانبية.")
     else:
         st.info("لا توجد عمليات بعد.")
-
+# ================== رحلة العميل (معدلة مع أسماء الموظفين) ==================
+elif menu == "🗺️ رحلة العميل":
+    st.subheader("🗺️ خريطة رحلة العميل (Citizen Journey Map)")
+    st.markdown("هذه الخريطة توضح رحلة المعاملة من وجهة نظر **المواطن أو الجهة المستفيدة**، مع المسؤول عن كل مرحلة.")
+    
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية لعرض رحلتها", pnames)
+        pid = int(sel.split(" - ")[0])
+        steps = get_steps(pid)
+        process = get_process_by_id(pid)
+        
+        if steps:
+            # تجهيز البيانات
+            step_labels = []  # اسم الخطوة + الموظف
+            proc_times = []
+            wait_times = []
+            step_types = []
+            pain_scores = []
+            
+            for s in steps:
+                with app.app_context():
+                    emp = Employee.query.get(s.employee_id)
+                    emp_title = emp.title if emp else "غير محدد"
+                
+                # التسمية: اسم الخطوة والموظف المسؤول
+                label = f"{s.step_order}. {s.step_name}<br><sup>👤 {emp_title}</sup>"
+                step_labels.append(label)
+                
+                proc_times.append(s.processing_time_minutes or 0)
+                wait_times.append(s.wait_time_minutes or 0)
+                step_types.append(s.step_type)
+                
+                # حساب درجة الألم
+                wait = s.wait_time_minutes or 0
+                if wait > 2880:
+                    pain_scores.append(10)
+                elif wait > 1440:
+                    pain_scores.append(8)
+                elif wait > 480:
+                    pain_scores.append(6)
+                elif wait > 60:
+                    pain_scores.append(4)
+                elif wait > 0:
+                    pain_scores.append(2)
+                else:
+                    pain_scores.append(0)
+            
+            # --- رسم بياني: رحلة العميل (شلال أفقي) ---
+            st.subheader("📈 مراحل الرحلة والمسؤولين ونقاط الألم")
+            
+            # رسم شريطي أفقي
+            fig_journey = go.Figure()
+            
+            # شريط وقت العمل (أخضر)
+            fig_journey.add_trace(go.Bar(
+                name='وقت العمل',
+                y=step_labels,
+                x=proc_times,
+                orientation='h',
+                marker=dict(color='#2ecc71', line=dict(color='#27ae60', width=1)),
+                text=[f"{p} دقيقة" if p > 0 else "" for p in proc_times],
+                textposition='inside',
+                insidetextanchor='start',
+                hovertemplate='<b>%{y}</b><br>وقت عمل: %{x} دقيقة<extra></extra>'
+            ))
+            
+            # شريط وقت الانتظار (أحمر)
+            fig_journey.add_trace(go.Bar(
+                name='وقت الانتظار',
+                y=step_labels,
+                x=wait_times,
+                orientation='h',
+                marker=dict(color='#e74c3c', line=dict(color='#c0392b', width=1)),
+                text=[f"{w} دقيقة" if w > 0 else "" for w in wait_times],
+                textposition='inside',
+                insidetextanchor='start',
+                hovertemplate='<b>%{y}</b><br>وقت انتظار: %{x} دقيقة<extra></extra>'
+            ))
+            
+            # إضافة أيقونات الألم (نجوم تحذير) للخطوات الحرجة
+            for i, score in enumerate(pain_scores):
+                if score >= 8:
+                    fig_journey.add_annotation(
+                        x=max(proc_times[i] + wait_times[i] + 20, 100),
+                        y=step_labels[i],
+                        text="⚠️ ألم شديد",
+                        showarrow=False,
+                        font=dict(color="#e74c3c", size=10),
+                        bgcolor="rgba(255,255,255,0.7)"
+                    )
+                elif score >= 6:
+                    fig_journey.add_annotation(
+                        x=max(proc_times[i] + wait_times[i] + 20, 100),
+                        y=step_labels[i],
+                        text="⏱️ تأخير",
+                        showarrow=False,
+                        font=dict(color="#f39c12", size=10),
+                        bgcolor="rgba(255,255,255,0.7)"
+                    )
+            
+            fig_journey.update_layout(
+                barmode='stack',
+                height=400 + len(steps) * 50,
+                title="رحلة المعاملة (وقت العمل مقابل وقت الانتظار) والمسؤولين",
+                xaxis_title="الوقت (دقيقة)",
+                yaxis=dict(autorange="reversed"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
+                margin=dict(l=20, r=80, t=40, b=20)
+            )
+            
+            st.plotly_chart(fig_journey, use_container_width=True)
+            
+            # --- بطاقات نقاط الألم ---
+            st.subheader("🔴 نقاط الألم في الرحلة (Pain Points)")
+            
+            pain_steps = []
+            for i, s in enumerate(steps):
+                if pain_scores[i] >= 6:
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        emp_title = emp.title if emp else "غير محدد"
+                    pain_steps.append({
+                        "الخطوة": s.step_name,
+                        "المسؤول": emp_title,
+                        "وقت الانتظار": f"{s.wait_time_minutes:.0f} دقيقة",
+                        "درجة الألم": f"{'🔴' * (pain_scores[i]//2)} {pain_scores[i]}/10",
+                        "فئة الهدر": s.waste_category or "غير محدد",
+                        "تأثير على العميل": "إحباط شديد" if pain_scores[i] >= 8 else "تأخير ملحوظ"
+                    })
+            
+            if pain_steps:
+                df_pain = pd.DataFrame(pain_steps)
+                st.dataframe(df_pain, use_container_width=True)
+                st.error(f"⚠️ تم اكتشاف {len(pain_steps)} نقاط ألم حرجة في رحلة العميل. هذه النقاط تحتاج إلى تدخل فوري.")
+            else:
+                st.success("✅ لا توجد نقاط ألم حرجة في هذه الرحلة.")
+            
+            # --- مؤشر رضا العميل التقديري (CSAT) ---
+            st.subheader("🙂 مؤشر رضا العميل التقديري")
+            
+            total_proc = sum(proc_times)
+            total_wait = sum(wait_times)
+            total_time = total_proc + total_wait
+            
+            if total_time > 0:
+                wait_ratio = total_wait / total_time
+                csat = max(0, 100 - (wait_ratio * 100))
+            else:
+                csat = 100
+            
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                if csat >= 80:
+                    st.markdown(f"<h1 style='color:green; text-align:center;'>{csat:.0f}%</h1>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;'>😊 ممتاز</p>", unsafe_allow_html=True)
+                elif csat >= 50:
+                    st.markdown(f"<h1 style='color:orange; text-align:center;'>{csat:.0f}%</h1>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;'>😐 متوسط</p>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<h1 style='color:red; text-align:center;'>{csat:.0f}%</h1>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;'>😞 ضعيف</p>", unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown(f"""
+                **كيف يُحسب هذا المؤشر؟**
+                - مؤشر رضا العميل = 100% - (نسبة وقت الانتظار من إجمالي زمن الرحلة).
+                - إجمالي وقت الرحلة: **{total_time:.0f} دقيقة**.
+                - وقت العمل الفعلي: **{total_proc:.0f} دقيقة**.
+                - وقت الانتظار: **{total_wait:.0f} دقيقة**.
+                - كلما زاد وقت الانتظار، انخفض رضا العميل.
+                """)
+            
+            # --- توصيات تلقائية ---
+            st.subheader("💡 توصيات لتحسين رحلة العميل")
+            
+            recommendations = []
+            for s in steps:
+                with app.app_context():
+                    emp = Employee.query.get(s.employee_id)
+                    emp_title = emp.title if emp else "غير محدد"
+                if s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 1440:
+                    recommendations.append(f"🚀 **أتمتة خطوة '{s.step_name}'** (المسؤول: {emp_title}): انتظار {s.wait_time_minutes:.0f} دقيقة يمكن اختزاله بتفعيل التوقيع الإلكتروني أو التنبيهات الآلية في Oracle/GFMIS.")
+                elif s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 0:
+                    recommendations.append(f"⏱️ **تسريع خطوة '{s.step_name}'** (المسؤول: {emp_title}): تقليل وقت الانتظار عبر إعادة توزيع المهام أو تحديد موعد نهائي للرد.")
+                elif s.system_used == 'ورقي':
+                    recommendations.append(f"📄 **رقمنة خطوة '{s.step_name}'** (المسؤول: {emp_title}): تحويل العمل الورقي إلى إلكتروني لاختصار الوقت والحركة.")
+            
+            if recommendations:
+                for r in recommendations:
+                    st.markdown(r)
+            else:
+                st.success("لا توجد توصيات حالية. الرحلة سلسة!")
+                
+        else:
+            st.info("لا توجد خطوات لهذه العملية. أضف خطوات من القائمة الجانبية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
 elif menu == "📖 دليل الاستخدام":
     st.subheader("📖 دليل استخدام نظام إعادة هندسة العمليات")
