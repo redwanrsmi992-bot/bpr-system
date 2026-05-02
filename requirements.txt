@@ -2,5 +2,3 @@ streamlit
 flask-sqlalchemy
 plotly
 pandas
-pytesseract
-Pillow
