@@ -1,4 +1,4 @@
-﻿from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
 db = SQLAlchemy()
@@ -15,7 +15,9 @@ class Employee(db.Model):
     @property
     def cost_per_minute(self):
         total_minutes = self.working_days_per_month * self.working_hours_per_day * 60
-        return self.monthly_cost / total_minutes if total_minutes > 0 else 0
+        if total_minutes > 0:
+            return self.monthly_cost / total_minutes
+        return 0
 
 class Process(db.Model):
     __tablename__ = 'processes'
@@ -50,7 +52,8 @@ class Process(db.Model):
         cost = 0
         for step in self.steps:
             if step.employee and step.processing_time_minutes:
-                cost += (step.processing_time_minutes * step.employee.cost_per_minute)
+                cost_per_min = step.employee.cost_per_minute
+                cost += (step.processing_time_minutes * cost_per_min)
         return cost
 
     @property
