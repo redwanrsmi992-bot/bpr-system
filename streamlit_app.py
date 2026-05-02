@@ -60,7 +60,26 @@ def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
                  system_used=sys_used, waste_category=waste)
         db.session.add(s)
         db.session.commit()
+def delete_process_from_db(pid):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            db.session.delete(p)
+            db.session.commit()
+            return True
+        return False
 
+def update_process_in_db(pid, name, category, freq, status):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            p.name = name
+            p.category = category
+            p.annual_frequency = freq
+            p.status = status
+            db.session.commit()
+            return True
+        return False
 # ---- القائمة الجانبية ----
 menu = st.sidebar.radio("📌 القائمة", [
     "الرئيسية",
