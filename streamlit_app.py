@@ -22,12 +22,9 @@ if not st.session_state.authenticated:
         password = st.text_input("🔒 كلمة المرور", type="password")
         
         if st.button("🚪 دخول", use_container_width=True):
-            allowed_users = {
-                "ahmad": "bpr2026",
-                "sara": "bpr2026",
-                "ali": "bpr2026",
-                "admin": "admin123"
-            }
+           allowed_users = {
+    "اسم_مستخدم_جديد": "كلمة_مرور_جديدة",
+}
             if username in allowed_users and allowed_users[username] == password:
                 st.session_state.authenticated = True
                 st.session_state.user = username
