@@ -1,0 +1,200 @@
+﻿import streamlit as st
+import pandas as pd
+import plotly.graph_objs as go
+from flask import Flask
+from models import db, Employee, Process, Step
+
+# ---- إعداد التطبيق ----
+st.set_page_config(page_title="نظام إعادة هندسة العمليات", layout="wide")
+st.title("🔍 نظام إعادة هندسة العمليات - دائرة الموازنة العامة")
+
+# ---- إعداد قاعدة البيانات ----
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bpr_system.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
+# ---- دوال مساعدة (كلها داخل app_context) ----
+def get_processes():
+    with app.app_context():
+        processes = Process.query.all()
+        # نجبر تحميل العلاقات قبل الخروج
+        for p in processes:
+            _ = p.steps
+        return processes
+
+def get_process_by_id(pid):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            _ = p.steps
+        return p
+
+def get_steps(pid):
+    with app.app_context():
+        return Step.query.filter_by(process_id=pid).order_by(Step.step_order).all()
+
+def add_process_to_db(name, category, freq, status):
+    with app.app_context():
+        p = Process(name=name, category=category, annual_frequency=freq, status=status)
+        db.session.add(p)
+        db.session.commit()
+
+def add_employee_to_db(title, cost):
+    with app.app_context():
+        e = Employee(title=title, monthly_cost=cost)
+        db.session.add(e)
+        db.session.commit()
+
+def get_employees():
+    with app.app_context():
+        return Employee.query.all()
+
+def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
+    with app.app_context():
+        s = Step(process_id=pid, employee_id=eid, step_order=order,
+                 step_name=name, processing_time_minutes=pt,
+                 wait_time_minutes=wt, step_type=stype,
+                 system_used=sys_used, waste_category=waste)
+        db.session.add(s)
+        db.session.commit()
+
+# ---- القائمة الجانبية ----
+menu = st.sidebar.radio("📌 القائمة", ["الرئيسية", "إضافة موظف", "إضافة عملية", "إضافة خطوات", "لوحة التحكم"])
+
+# ================== الصفحة الرئيسية ==================
+if menu == "الرئيسية":
+    st.subheader("📋 قائمة العمليات")
+    processes = get_processes()
+    if processes:
+        data = []
+        for p in processes:
+            with app.app_context():
+                eff = Process.query.get(p.id).flow_efficiency
+                cost = Process.query.get(p.id).annual_cost
+            data.append({
+                "المعرف": p.id,
+                "اسم العملية": p.name,
+                "الفئة": p.category,
+                "التكرار السنوي": p.annual_frequency,
+                "الحالة": p.status,
+                "كفاءة التدفق": f"{eff:.2f}%",
+                "التكلفة السنوية": f"{cost:,.2f} د.أ"
+            })
+        st.dataframe(pd.DataFrame(data), use_container_width=True)
+    else:
+        st.info("لا توجد عمليات بعد. أضف عملية من القائمة الجانبية.")
+
+# ================== إضافة موظف ==================
+elif menu == "إضافة موظف":
+    st.subheader("👤 إضافة موظف جديد")
+    with st.form("add_emp"):
+        title = st.text_input("المسمى الوظيفي")
+        cost = st.number_input("الراتب الشهري (دينار)", min_value=100, value=5000)
+        if st.form_submit_button("حفظ"):
+            add_employee_to_db(title, cost)
+            st.success(f"تمت إضافة الموظف: {title}")
+    emps = get_employees()
+    if emps:
+        st.subheader("الموظفون الحاليون")
+        edata = [{"المعرف": e.id, "المسمى": e.title, "الراتب": e.monthly_cost} for e in emps]
+        st.dataframe(pd.DataFrame(edata))
+
+# ================== إضافة عملية ==================
+elif menu == "إضافة عملية":
+    st.subheader("➕ إضافة عملية جديدة")
+    with st.form("add_proc"):
+        name = st.text_input("اسم العملية")
+        category = st.selectbox("الفئة", ["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"])
+        freq = st.number_input("التكرار السنوي", min_value=1, value=1)
+        status = st.selectbox("الحالة", ["غير_مبدوء", "تحت_الدراسة", "مكتمل"])
+        if st.form_submit_button("حفظ"):
+            if name:
+                add_process_to_db(name, category, freq, status)
+                st.success(f"تمت إضافة العملية: {name}")
+            else:
+                st.error("الرجاء إدخال اسم العملية")
+
+# ================== إضافة خطوات ==================
+elif menu == "إضافة خطوات":
+    st.subheader("📝 إضافة خطوات لعملية")
+    processes = get_processes()
+    employees = get_employees()
+    if not processes:
+        st.warning("لا توجد عمليات. أضف عملية أولاً.")
+    elif not employees:
+        st.warning("لا توجد موظفين. أضف موظفاً أولاً.")
+    else:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        enames = [f"{e.id} - {e.title}" for e in employees]
+        with st.form("add_step"):
+            pid_sel = st.selectbox("اختر العملية", pnames)
+            eid_sel = st.selectbox("اختر الموظف", enames)
+            order = st.number_input("رقم الترتيب", min_value=1, value=1)
+            sname = st.text_input("اسم الخطوة")
+            pt = st.number_input("وقت المعالجة (دقيقة)", min_value=0.0, value=5.0)
+            wt = st.number_input("وقت الانتظار (دقيقة)", min_value=0.0, value=0.0)
+            stype = st.selectbox("نوع الخطوة", ["VA", "BNVA", "NVA"])
+            system = st.selectbox("النظام المستخدم", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"])
+            waste = st.text_input("فئة الهدر (إن وجدت)")
+            if st.form_submit_button("حفظ"):
+                pid = int(pid_sel.split(" - ")[0])
+                eid = int(eid_sel.split(" - ")[0])
+                add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
+                st.success("تمت إضافة الخطوة!")
+
+# ================== لوحة التحكم ==================
+elif menu == "لوحة التحكم":
+    st.subheader("📊 لوحة التحكم")
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية", pnames)
+        pid = int(sel.split(" - ")[0])
+        process = get_process_by_id(pid)
+        steps = get_steps(pid)
+        if process and steps:
+            with app.app_context():
+                p = Process.query.get(pid)
+                eff = p.flow_efficiency
+                lead = p.lead_time_minutes
+                cost = p.annual_cost
+            c1, c2, c3 = st.columns(3)
+            c1.metric("كفاءة التدفق", f"{eff:.2f}%")
+            c2.metric("زمن الدورة (ساعة)", f"{lead/60:.1f}")
+            c3.metric("التكلفة السنوية", f"{cost:,.2f} د.أ")
+            sn = [s.step_name for s in steps]
+            pt = [s.processing_time_minutes or 0 for s in steps]
+            wt = [s.wait_time_minutes or 0 for s in steps]
+            bar1 = go.Bar(name='وقت العمل', x=sn, y=pt, marker_color='green')
+            bar2 = go.Bar(name='وقت الانتظار', x=sn, y=wt, marker_color='red')
+            fig = go.Figure(data=[bar1, bar2])
+            fig.update_layout(barmode='stack', xaxis_tickangle=-45, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+            pie = go.Figure(data=[go.Pie(labels=['عمل', 'انتظار'],
+                                          values=[sum(pt), sum(wt)],
+                                          marker_colors=['green', 'red'])])
+            st.plotly_chart(pie, use_container_width=True)
+            tdata = []
+            for s in steps:
+                with app.app_context():
+                    emp = Employee.query.get(s.employee_id)
+                    emp_title = emp.title if emp else "-"
+                tdata.append({
+                    "#": s.step_order,
+                    "الخطوة": s.step_name,
+                    "الموظف": emp_title,
+                    "وقت العمل": s.processing_time_minutes,
+                    "وقت الانتظار": s.wait_time_minutes,
+                    "النوع": s.step_type,
+                    "النظام": s.system_used or "-",
+                    "الهدر": s.waste_category or "-"
+                })
+            st.dataframe(pd.DataFrame(tdata), use_container_width=True)
+        else:
+            st.info("لا توجد خطوات لهذه العملية. أضف خطوات من القائمة الجانبية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
