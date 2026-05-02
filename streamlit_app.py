@@ -260,34 +260,117 @@ elif menu == "اضافة عملية":
             else:
                 st.error("الرجاء ادخال اسم العملية")
 
-# ================== اضافة خطوات ==================
+# ================== اضافة خطوات (مع تعديل وحذف) ==================
 elif menu == "اضافة خطوات":
-    st.subheader("اضافة خطوات لعملية")
-    processes = get_processes()
-    employees = get_employees()
-    if not processes:
-        st.warning("لا توجد عمليات")
-    elif not employees:
-        st.warning("لا توجد موظفين")
-    else:
-        pnames = [f"{p.id} - {p.name}" for p in processes]
-        enames = [f"{e.id} - {e.title}" for e in employees]
-        with st.form("add_step"):
-            pid_sel = st.selectbox("اختر العملية", pnames)
-            eid_sel = st.selectbox("اختر الموظف", enames)
-            order = st.number_input("رقم الترتيب", min_value=1, value=1)
-            sname = st.text_input("اسم الخطوة")
-            pt = st.number_input("وقت المعالجة (دقيقة)", min_value=0.0, value=5.0)
-            wt = st.number_input("وقت الانتظار (دقيقة)", min_value=0.0, value=0.0)
-            stype = st.selectbox("نوع الخطوة", ["VA", "BNVA", "NVA"])
-            system = st.selectbox("النظام المستخدم", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"])
-            waste = st.text_input("فئة الهدر (ان وجدت)")
-            if st.form_submit_button("حفظ"):
-                pid = int(pid_sel.split(" - ")[0])
-                eid = int(eid_sel.split(" - ")[0])
-                add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
-                st.success("تمت اضافة الخطوة")
-                st.rerun()
+    st.subheader("ادارة الخطوات")
+    
+    tab1, tab2 = st.tabs(["➕ اضافة خطوة", "📋 عرض وتعديل الخطوات"])
+    
+    # ---- تبويبة الاضافة ----
+    with tab1:
+        processes = get_processes()
+        employees = get_employees()
+        if not processes:
+            st.warning("لا توجد عمليات")
+        elif not employees:
+            st.warning("لا توجد موظفين")
+        else:
+            pnames = [f"{p.id} - {p.name}" for p in processes]
+            enames = [f"{e.id} - {e.title}" for e in employees]
+            with st.form("add_step"):
+                pid_sel = st.selectbox("اختر العملية", pnames)
+                eid_sel = st.selectbox("اختر الموظف", enames)
+                order = st.number_input("رقم الترتيب", min_value=1, value=1)
+                sname = st.text_input("اسم الخطوة")
+                pt = st.number_input("وقت المعالجة (دقيقة)", min_value=0.0, value=5.0)
+                wt = st.number_input("وقت الانتظار (دقيقة)", min_value=0.0, value=0.0)
+                stype = st.selectbox("نوع الخطوة", ["VA", "BNVA", "NVA"])
+                system = st.selectbox("النظام المستخدم", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"])
+                waste = st.text_input("فئة الهدر (ان وجدت)")
+                if st.form_submit_button("💾 حفظ الخطوة"):
+                    pid = int(pid_sel.split(" - ")[0])
+                    eid = int(eid_sel.split(" - ")[0])
+                    add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
+                    st.success("تمت اضافة الخطوة")
+                    st.rerun()
+    
+    # ---- تبويبة العرض والتعديل ----
+    with tab2:
+        processes = get_processes()
+        if processes:
+            pnames = [f"{p.id} - {p.name}" for p in processes]
+            sel_process = st.selectbox("اختر العملية لعرض خطواتها", pnames, key="view_steps")
+            pid = int(sel_process.split(" - ")[0])
+            steps = get_steps(pid)
+            
+            if steps:
+                st.markdown(f"**عدد الخطوات:** {len(steps)}")
+                for s in steps:
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        emp_title = emp.title if emp else "-"
+                    with st.expander(f"{s.step_order}. {s.step_name} | {s.step_type} | {emp_title}"):
+                        col_info, col_actions = st.columns([3, 1])
+                        with col_info:
+                            st.markdown(f"""
+                            - **الموظف:** {emp_title}
+                            - **وقت العمل:** {s.processing_time_minutes} دقيقة
+                            - **وقت الانتظار:** {s.wait_time_minutes} دقيقة
+                            - **النظام:** {s.system_used or '-'}
+                            - **الهدر:** {s.waste_category or '-'}
+                            """)
+                        with col_actions:
+                            if st.button("✏️ تعديل", key=f"edit_step_{s.id}"):
+                                st.session_state[f"editing_step_{s.id}"] = True
+                            if st.button("🗑️ حذف", key=f"del_step_{s.id}"):
+                                with app.app_context():
+                                    step = Step.query.get(s.id)
+                                    if step:
+                                        db.session.delete(step)
+                                        db.session.commit()
+                                st.success("تم الحذف")
+                                st.rerun()
+                        
+                        if st.session_state.get(f"editing_step_{s.id}", False):
+                            with st.form(f"edit_step_form_{s.id}"):
+                                employees = get_employees()
+                                enames = [f"{e.id} - {e.title}" for e in employees]
+                                current_emp = f"{s.employee_id} - {emp_title}" if s.employee_id else enames[0]
+                                new_eid_sel = st.selectbox("الموظف", enames, index=enames.index(current_emp) if current_emp in enames else 0)
+                                new_order = st.number_input("رقم الترتيب", min_value=1, value=s.step_order)
+                                new_name = st.text_input("اسم الخطوة", value=s.step_name)
+                                new_pt = st.number_input("وقت المعالجة", min_value=0.0, value=s.processing_time_minutes)
+                                new_wt = st.number_input("وقت الانتظار", min_value=0.0, value=s.wait_time_minutes)
+                                new_type = st.selectbox("النوع", ["VA", "BNVA", "NVA"], index=["VA", "BNVA", "NVA"].index(s.step_type))
+                                new_system = st.selectbox("النظام", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"], index=["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"].index(s.system_used) if s.system_used in ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"] else 0)
+                                new_waste = st.text_input("فئة الهدر", value=s.waste_category or "")
+                                
+                                col_save, col_cancel = st.columns(2)
+                                with col_save:
+                                    if st.form_submit_button("💾 حفظ"):
+                                        with app.app_context():
+                                            step = Step.query.get(s.id)
+                                            if step:
+                                                step.employee_id = int(new_eid_sel.split(" - ")[0])
+                                                step.step_order = new_order
+                                                step.step_name = new_name
+                                                step.processing_time_minutes = new_pt
+                                                step.wait_time_minutes = new_wt
+                                                step.step_type = new_type
+                                                step.system_used = new_system
+                                                step.waste_category = new_waste
+                                                db.session.commit()
+                                        st.session_state[f"editing_step_{s.id}"] = False
+                                        st.success("تم التعديل")
+                                        st.rerun()
+                                with col_cancel:
+                                    if st.form_submit_button("❌ الغاء"):
+                                        st.session_state[f"editing_step_{s.id}"] = False
+                                        st.rerun()
+            else:
+                st.info("لا توجد خطوات لهذه العملية")
+        else:
+            st.info("لا توجد عمليات بعد")
 
 # ================== لوحة التحكم ==================
 elif menu == "لوحة التحكم":
