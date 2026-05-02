@@ -6,7 +6,48 @@ from models import db, Employee, Process, Step
 
 # ---- إعداد التطبيق ----
 st.set_page_config(page_title="نظام إعادة هندسة العمليات", layout="wide")
+
+# ---- حماية بكلمة مرور ----
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔐 نظام إعادة هندسة العمليات")
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("### 👥 دخول أعضاء الفريق")
+        username = st.text_input("👤 اسم المستخدم")
+        password = st.text_input("🔒 كلمة المرور", type="password")
+        
+        if st.button("🚪 دخول", use_container_width=True):
+            allowed_users = {
+                "ahmad": "bpr2026",
+                "sara": "bpr2026",
+                "ali": "bpr2026",
+                "admin": "admin123"
+            }
+            if username in allowed_users and allowed_users[username] == password:
+                st.session_state.authenticated = True
+                st.session_state.user = username
+                st.rerun()
+            else:
+                st.error("❌ اسم المستخدم أو كلمة المرور خاطئة")
+        
+        st.markdown("---")
+        st.caption("للاستفسار عن بيانات الدخول، تواصل مع مسؤول النظام")
+    
+    st.stop()
+
+# ---- التطبيق الرئيسي (بعد تسجيل الدخول) ----
 st.title("🔍 نظام إعادة هندسة العمليات - دائرة الموازنة العامة")
+st.sidebar.success(f"👋 مرحباً، {st.session_state.user}")
+
+if st.sidebar.button("🚪 تسجيل الخروج"):
+    st.session_state.authenticated = False
+    st.session_state.user = ""
+    st.rerun()
 
 # ---- إعداد قاعدة البيانات ----
 app = Flask(__name__)
