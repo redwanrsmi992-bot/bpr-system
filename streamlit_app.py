@@ -359,7 +359,7 @@ elif menu == "لوحة التحكم":
                 eff = p.flow_efficiency
                 lead = p.lead_time_minutes
                 cost = p.annual_cost
-               # حساب التكلفة الشاملة بطريقة بسيطة
+                 # حساب التكلفة الشاملة بطريقة صحيحة
             total_wait_cost = 0
             for s in steps:
                 with app.app_context():
@@ -367,7 +367,9 @@ elif menu == "لوحة التحكم":
                     if emp and s.wait_time_minutes:
                         total_wait_cost += (s.wait_time_minutes * emp.cost_per_minute)
             
-            comprehensive_annual = (cost + total_wait_cost) * p.annual_frequency
+            # التكلفة الشاملة = (تكلفة العمل للتنفيذ الواحد + تكلفة الانتظار للتنفيذ الواحد) × التكرار
+            cost_per_execution = cost / p.annual_frequency
+            comprehensive_annual = (cost_per_execution + total_wait_cost) * p.annual_frequency
 
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("كفاءة التدفق", f"{eff:.2f}%")
