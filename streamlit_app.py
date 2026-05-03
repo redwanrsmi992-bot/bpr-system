@@ -579,13 +579,11 @@ elif menu == "مصفوفة الاثر والتاثير":
         if steps:
             step_names = [f"{s.step_order}. {s.step_name}" for s in steps]
             
-            # حفظ الخطوة السابقة لمقارنتها
             if "previous_step" not in st.session_state:
                 st.session_state.previous_step = step_names[0] if step_names else None
             
             sel_step = st.selectbox("اختر الخطوة التي تريد تعديلها", step_names)
             
-            # تفريغ الحقول تلقائياً عند تغيير الخطوة
             if sel_step != st.session_state.previous_step:
                 st.session_state.previous_step = sel_step
                 st.session_state.pop("change_desc", None)
@@ -595,35 +593,35 @@ elif menu == "مصفوفة الاثر والتاثير":
             st.markdown("### التعديل المقترح")
             change_description = st.text_area("صف التعديل الذي تخطط له", value=st.session_state.get("change_desc", ""))
             
-                st.markdown("---")
-                st.markdown("### الاطراف المتاثرة بالتعديل")
-                
-                impacted_parties = ["الموظف", "النظام (Oracle/GFMIS)", "جهة خارجية", "العميل"]
-                impacts = {}
-                
-                for party in impacted_parties:
-                    with st.expander(f"{party}"):
-                        col1, col2 = st.columns([1, 2])
-                        with col1:
-                            impact_type = st.selectbox("نوع الاثر", ["لا يوجد تغيير", "تغيير في الصلاحية", "تغيير في الوقت", "تغيير في التكلفة", "مقاومة متوقعة"], key=f"type_{party}")
-                        with col2:
-                            impact_desc = st.text_area("وصف الاثر", key=f"desc_{party}")
-                        impacts[party] = {"type": impact_type, "desc": impact_desc}
-                
-                st.markdown("---")
-                st.markdown("### تقدير مبدئي للعائد")
-                selected_step_index = int(sel_step.split(".")[0]) - 1
-                if selected_step_index < len(steps):
-                    target_step = steps[selected_step_index]
-                    current_wait = target_step.wait_time_minutes or 0
-                    if current_wait > 0:
-                        saved_minutes = current_wait * 0.8
-                        st.success(f"بتعديل هذه الخطوة (التي تنتظر {current_wait:.0f} دقيقة)، يمكنك توفير ما يقدر بـ **{saved_minutes:.0f} دقيقة** على الاقل لكل معاملة")
-                    else:
-                        st.info("لا يوجد وقت انتظار مسجل لهذه الخطوة")
-                
-                if st.button("حفظ التحليل"):
-                    st.success("تم تسجيل التحليل بنجاح")
+            st.markdown("---")
+            st.markdown("### الاطراف المتاثرة بالتعديل")
+            
+            impacted_parties = ["الموظف", "النظام (Oracle/GFMIS)", "جهة خارجية", "العميل"]
+            impacts = {}
+            
+            for party in impacted_parties:
+                with st.expander(f"{party}"):
+                    col1, col2 = st.columns([1, 2])
+                    with col1:
+                        impact_type = st.selectbox("نوع الاثر", ["لا يوجد تغيير", "تغيير في الصلاحية", "تغيير في الوقت", "تغيير في التكلفة", "مقاومة متوقعة"], key=f"type_{party}")
+                    with col2:
+                        impact_desc = st.text_area("وصف الاثر", key=f"desc_{party}")
+                    impacts[party] = {"type": impact_type, "desc": impact_desc}
+            
+            st.markdown("---")
+            st.markdown("### تقدير مبدئي للعائد")
+            selected_step_index = int(sel_step.split(".")[0]) - 1
+            if selected_step_index < len(steps):
+                target_step = steps[selected_step_index]
+                current_wait = target_step.wait_time_minutes or 0
+                if current_wait > 0:
+                    saved_minutes = current_wait * 0.8
+                    st.success(f"بتعديل هذه الخطوة (التي تنتظر {current_wait:.0f} دقيقة)، يمكنك توفير ما يقدر بـ **{saved_minutes:.0f} دقيقة** على الاقل لكل معاملة")
+                else:
+                    st.info("لا يوجد وقت انتظار مسجل لهذه الخطوة")
+            
+            if st.button("حفظ التحليل"):
+                st.success("تم تسجيل التحليل بنجاح")
         else:
             st.info("لا توجد خطوات لهذه العملية")
     else:
