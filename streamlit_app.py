@@ -359,21 +359,21 @@ elif menu == "لوحة التحكم":
                 eff = p.flow_efficiency
                 lead = p.lead_time_minutes
                 cost = p.annual_cost
-                       # حساب التكلفة الشاملة (شاملة وقت الانتظار)
-            total_wait_cost_per_execution = 0
+               # حساب التكلفة الشاملة بطريقة بسيطة
+            total_wait_cost = 0
             for s in steps:
                 with app.app_context():
                     emp = Employee.query.get(s.employee_id)
-                if emp and s.wait_time_minutes:
-                    total_wait_cost_per_execution += (s.wait_time_minutes * emp.cost_per_minute)
+                    if emp and s.wait_time_minutes:
+                        total_wait_cost += (s.wait_time_minutes * emp.cost_per_minute)
             
-            comprehensive_annual_cost = (process.total_cost + total_wait_cost_per_execution) * process.annual_frequency
+            comprehensive_annual = (cost + total_wait_cost) * p.annual_frequency
 
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("كفاءة التدفق", f"{eff:.2f}%")
             c2.metric("زمن الدورة (ساعة)", f"{lead/60:.1f}")
             c3.metric("التكلفة السنوية (عمل فقط)", f"{cost:,.2f} د.ا")
-            c4.metric("💸 التكلفة الشاملة", f"{comprehensive_annual_cost:,.2f} د.ا")
+            c4.metric("💸 التكلفة الشاملة", f"{comprehensive_annual:,.2f} د.ا")
             sn = [s.step_name for s in steps]
             pt = [s.processing_time_minutes or 0 for s in steps]
             wt = [s.wait_time_minutes or 0 for s in steps]
