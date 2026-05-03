@@ -196,16 +196,10 @@ elif menu == "اضافة موظف":
     with st.expander("اضافة موظف جديد", expanded=False):
         with st.form("add_emp"):
             title = st.text_input("المسمى الوظيفي")
-            st.markdown("**نطاق الراتب الشهري (دينار اردني)**")
-            min_salary, max_salary = st.slider(
-                "اختر نطاق الراتب (من - الى)",
-                min_value=300, max_value=5000, value=(500, 1000), step=50
-            )
-            avg_salary = (min_salary + max_salary) // 2
-            st.info(f"الراتب المعتمد للحساب: **{avg_salary} دينار** (متوسط النطاق)")
+            cost = st.number_input("الراتب الشهري (دينار)", min_value=100, value=500)
             if st.form_submit_button("حفظ"):
                 if title:
-                    add_employee_to_db(title, float(avg_salary))
+                    add_employee_to_db(title, float(cost))
                     st.success(f"تمت اضافة الموظف: {title}")
                     st.rerun()
                 else:
@@ -216,33 +210,10 @@ elif menu == "اضافة موظف":
         st.subheader("الموظفون الحاليون")
         for e in emps:
             with st.expander(f"{e.id} - {e.title} ({e.monthly_cost:.0f} د.ا)"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("تعديل", key=f"edit_emp_{e.id}"):
-                        st.session_state[f"editing_emp_{e.id}"] = True
-                with col2:
-                    if st.button("حذف", key=f"del_emp_{e.id}"):
-                        delete_employee_from_db(e.id)
-                        st.success("تم الحذف")
-                        st.rerun()
-                
-                if st.session_state.get(f"editing_emp_{e.id}", False):
-                    with st.form(f"edit_emp_form_{e.id}"):
-                        new_title = st.text_input("المسمى الوظيفي", value=e.title)
-                        new_cost = st.number_input("الراتب الشهري", min_value=100, value=int(e.monthly_cost))
-                        col_save, col_cancel = st.columns(2)
-                        with col_save:
-                            if st.form_submit_button("حفظ"):
-                                update_employee_in_db(e.id, new_title, float(new_cost))
-                                st.session_state[f"editing_emp_{e.id}"] = False
-                                st.success("تم التعديل")
-                                st.rerun()
-                        with col_cancel:
-                            if st.form_submit_button("الغاء"):
-                                st.session_state[f"editing_emp_{e.id}"] = False
-                                st.rerun()
-    else:
-        st.info("لا يوجد موظفين بعد")
+                if st.button("حذف", key=f"del_emp_{e.id}"):
+                    delete_employee_from_db(e.id)
+                    st.success("تم الحذف")
+                    st.rerun()
 
 # ================== اضافة عملية ==================
 elif menu == "اضافة عملية":
