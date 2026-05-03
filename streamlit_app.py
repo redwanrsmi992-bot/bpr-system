@@ -577,13 +577,23 @@ elif menu == "مصفوفة الاثر والتاثير":
         steps = get_steps(pid)
         
         if steps:
-            step_names = [f"{s.step_order}. {s.step_name}" for s in steps]
+                       step_names = [f"{s.step_order}. {s.step_name}" for s in steps]
+            
+            # حفظ الخطوة السابقة لمقارنتها
+            if "previous_step" not in st.session_state:
+                st.session_state.previous_step = step_names[0] if step_names else None
+            
             sel_step = st.selectbox("اختر الخطوة التي تريد تعديلها", step_names)
+            
+            # تفريغ الحقول تلقائياً عند تغيير الخطوة
+            if sel_step != st.session_state.previous_step:
+                st.session_state.previous_step = sel_step
+                st.session_state.pop("change_desc", None)
+                st.rerun()
             
             st.markdown("---")
             st.markdown("### التعديل المقترح")
-            change_description = st.text_area("صف التعديل الذي تخطط له")
-            
+            change_description = st.text_area("صف التعديل الذي تخطط له", value=st.session_state.get("change_desc", ""))            
             if change_description:
                 st.markdown("---")
                 st.markdown("### الاطراف المتاثرة بالتعديل")
