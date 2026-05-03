@@ -608,9 +608,10 @@ elif menu == "مصفوفة الاثر والتاثير":
 
 # ================== رفع ملف عمليات ==================
 # ================== رفع ملف عمليات ==================
+# ================== رفع ملف عمليات (تلقائي) ==================
 elif menu == "رفع ملف عمليات":
     st.subheader("رفع ملف عمليات (Excel/CSV)")
-    st.markdown("ارفع ملف Excel أو CSV يحتوي على بيانات العملية والخطوات.")
+    st.markdown("ارفع ملف Excel أو CSV. سيقرأ النظام أول ورقتين تلقائياً.")
 
     uploaded_file = st.file_uploader("اختر ملف Excel أو CSV", type=["xlsx", "csv"])
 
@@ -620,8 +621,16 @@ elif menu == "رفع ملف عمليات":
                 df_process = pd.read_csv(uploaded_file, nrows=1)
                 df_steps = pd.read_csv(uploaded_file, skiprows=2)
             else:
-                df_process = pd.read_excel(uploaded_file, sheet_name='العملية')
-                df_steps = pd.read_excel(uploaded_file, sheet_name='الخطوات')
+                # قراءة جميع أسماء الأوراق
+                xl = pd.ExcelFile(uploaded_file)
+                sheet_names = xl.sheet_names
+                
+                if len(sheet_names) >= 2:
+                    df_process = pd.read_excel(uploaded_file, sheet_name=sheet_names[0])
+                    df_steps = pd.read_excel(uploaded_file, sheet_name=sheet_names[1])
+                else:
+                    st.error("يجب أن يحتوي الملف على ورقتين على الأقل.")
+                    st.stop()
 
             st.subheader("معاينة البيانات المستوردة")
             col1, col2 = st.columns(2)
