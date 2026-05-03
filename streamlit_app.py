@@ -607,12 +607,13 @@ elif menu == "مصفوفة الاثر والتاثير":
         st.info("لا توجد عمليات بعد")
 
 # ================== رفع ملف عمليات ==================
+# ================== رفع ملف عمليات ==================
 elif menu == "رفع ملف عمليات":
     st.subheader("رفع ملف عمليات (Excel/CSV)")
-    st.markdown("ارفع ملف Excel او CSV يحتوي على بيانات العملية والخطوات دفعة واحدة")
-    
-    uploaded_file = st.file_uploader("اختر ملف Excel او CSV", type=["xlsx", "csv"])
-    
+    st.markdown("ارفع ملف Excel أو CSV يحتوي على بيانات العملية والخطوات.")
+
+    uploaded_file = st.file_uploader("اختر ملف Excel أو CSV", type=["xlsx", "csv"])
+
     if uploaded_file is not None:
         try:
             if uploaded_file.name.endswith('.csv'):
@@ -621,7 +622,7 @@ elif menu == "رفع ملف عمليات":
             else:
                 df_process = pd.read_excel(uploaded_file, sheet_name='العملية')
                 df_steps = pd.read_excel(uploaded_file, sheet_name='الخطوات')
-            
+
             st.subheader("معاينة البيانات المستوردة")
             col1, col2 = st.columns(2)
             with col1:
@@ -630,26 +631,28 @@ elif menu == "رفع ملف عمليات":
             with col2:
                 st.markdown("**بيانات الخطوات:**")
                 st.dataframe(df_steps, use_container_width=True)
-            
+
             if st.button("تاكيد واستيراد البيانات", use_container_width=True):
                 with app.app_context():
+                    # استيراد العملية
                     process_row = df_process.iloc[0]
                     process_name = str(process_row['اسم العملية'])
                     category = str(process_row.get('الفئة', 'روتينية'))
                     freq = int(process_row.get('التكرار السنوي', 1))
                     status = str(process_row.get('الحالة', 'تحت_الدراسة'))
-                    
+
                     existing = Process.query.filter_by(name=process_name).first()
                     if existing:
-                        st.warning(f"العملية '{process_name}' موجودة مسبقا")
                         process_id = existing.id
+                        st.info(f"العملية '{process_name}' موجودة مسبقاً. ستُضاف إليها الخطوات.")
                     else:
                         new_process = Process(name=process_name, category=category,
                                              annual_frequency=freq, status=status)
                         db.session.add(new_process)
                         db.session.commit()
                         process_id = new_process.id
-                    
+
+                    # استيراد الخطوات
                     steps_added = 0
                     for _, row in df_steps.iterrows():
                         step_order = int(row['رقم الترتيب'])
@@ -658,17 +661,18 @@ elif menu == "رفع ملف عمليات":
                         wait_time = float(row.get('وقت الانتظار', 0))
                         step_type = str(row.get('النوع', 'VA'))
                         system_used = str(row.get('النظام', ''))
-                        waste_cat = str(row.get('فئة الهدر', '')) if pd.notna(row.get('فئة الهدر', '')) else ''
+                        waste_cat = str(row.get('فئة الهدر', '')) if pd.notna(row.get('فئة الهدر', None)) else ''
                         emp_name = str(row.get('الموظف', ''))
-                        
+
+                        # البحث عن الموظف أو إنشاؤه
                         employee = Employee.query.filter_by(title=emp_name).first()
                         if not employee and emp_name:
                             employee = Employee(title=emp_name, monthly_cost=500)
                             db.session.add(employee)
                             db.session.commit()
-                        
+
                         emp_id = employee.id if employee else None
-                        
+
                         new_step = Step(
                             process_id=process_id,
                             employee_id=emp_id,
@@ -682,14 +686,14 @@ elif menu == "رفع ملف عمليات":
                         )
                         db.session.add(new_step)
                         steps_added += 1
-                    
+
                     db.session.commit()
-                
-                st.success(f"تم استيراد العملية '{process_name}' بنجاح مع {steps_added} خطوة")
+
+                st.success(f"تم استيراد العملية '{process_name}' بنجاح مع {steps_added} خطوة!")
                 st.balloons()
-                
+
         except Exception as e:
-            st.error("حدث خطأ اثناء قراءة الملف")
+            st.error("حدث خطأ أثناء قراءة الملف. تأكد من التنسيق الصحيح.")
             st.code(str(e))
 
 # ================== دليل الاستخدام ==================
