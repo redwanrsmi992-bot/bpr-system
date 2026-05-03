@@ -577,7 +577,7 @@ elif menu == "مصفوفة الاثر والتاثير":
         steps = get_steps(pid)
         
         if steps:
-                       step_names = [f"{s.step_order}. {s.step_name}" for s in steps]
+            step_names = [f"{s.step_order}. {s.step_name}" for s in steps]
             
             # حفظ الخطوة السابقة لمقارنتها
             if "previous_step" not in st.session_state:
@@ -593,7 +593,8 @@ elif menu == "مصفوفة الاثر والتاثير":
             
             st.markdown("---")
             st.markdown("### التعديل المقترح")
-            change_description = st.text_area("صف التعديل الذي تخطط له", value=st.session_state.get("change_desc", ""))            
+            change_description = st.text_area("صف التعديل الذي تخطط له", value=st.session_state.get("change_desc", ""))
+            
             if change_description:
                 st.markdown("---")
                 st.markdown("### الاطراف المتاثرة بالتعديل")
