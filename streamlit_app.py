@@ -595,7 +595,6 @@ elif menu == "مصفوفة الاثر والتاثير":
             st.markdown("### التعديل المقترح")
             change_description = st.text_area("صف التعديل الذي تخطط له", value=st.session_state.get("change_desc", ""))
             
-            if change_description:
                 st.markdown("---")
                 st.markdown("### الاطراف المتاثرة بالتعديل")
                 
