@@ -139,6 +139,7 @@ menu = st.sidebar.radio("القائمة", [
     "رفع ملف عمليات",
     "🎯 تحليل باريتو (80/20)",
     "📋 SIPOC",
+    "📊 RACI",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -868,6 +869,73 @@ elif menu == "📋 SIPOC":
                         "الوصف": [sup, inp, proc, outp, cust]
                     })
                     st.dataframe(df_sipoc, use_container_width=True)
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== RACI Matrix ==================
+elif menu == "📊 RACI":
+    st.subheader("📊 مصفوفة المسؤوليات (RACI)")
+    st.markdown("تحديد المسؤوليات لكل خطوة: Responsible, Accountable, Consulted, Informed")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية", pnames)
+        pid = int(sel.split(" - ")[0])
+        steps = get_steps(pid)
+
+        if steps:
+            # جمع كل الموظفين المشاركين في العملية
+            unique_emps = {}
+            for s in steps:
+                with app.app_context():
+                    emp = Employee.query.get(s.employee_id)
+                    if emp:
+                        unique_emps[emp.id] = emp.title
+
+            if unique_emps:
+                # اقتراح تلقائي لـ RACI
+                st.markdown("### اقتراح آلي (يمكنك تعديله)")
+                
+                raci_data = []
+                for s in steps:
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        emp_title = emp.title if emp else "-"
+                    
+                    row = {
+                        "الخطوة": s.step_name,
+                        "R (مسؤول)": emp_title,
+                        "A (معتمد)": "مدير عام" if "توقيع" in s.step_name else "مدير مالي",
+                        "C (مُستشار)": "مدقق مالي" if "تدقيق" in s.step_name else "-",
+                        "I (مُبلّغ)": "جميع الأطراف"
+                    }
+                    raci_data.append(row)
+                
+                df_raci = pd.DataFrame(raci_data)
+                
+                # عرض قابل للتعديل
+                with st.form("raci_form"):
+                    edited_rows = []
+                    for i, row in enumerate(raci_data):
+                        st.markdown(f"**{row['الخطوة']}**")
+                        col_r, col_a, col_c, col_i = st.columns(4)
+                        with col_r:
+                            new_r = st.text_input("R", value=row["R (مسؤول)"], key=f"r_{i}")
+                        with col_a:
+                            new_a = st.text_input("A", value=row["A (معتمد)"], key=f"a_{i}")
+                        with col_c:
+                            new_c = st.text_input("C", value=row["C (مُستشار)"], key=f"c_{i}")
+                        with col_i:
+                            new_i = st.text_input("I", value=row["I (مُبلّغ)"], key=f"i_{i}")
+                        edited_rows.append({"الخطوة": row["الخطوة"], "R": new_r, "A": new_a, "C": new_c, "I": new_i})
+                    
+                    if st.form_submit_button("💾 حفظ RACI"):
+                        st.success("تم حفظ مصفوفة RACI")
+                        st.dataframe(pd.DataFrame(edited_rows), use_container_width=True)
+            else:
+                st.info("لا يوجد موظفين مرتبطين بهذه العملية.")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
