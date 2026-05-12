@@ -956,7 +956,7 @@ elif menu == "🎯 تحليل باريتو (80/20)":
         # ================== SIPOC ==================
 elif menu == "📋 SIPOC":
     st.subheader("📋 تحليل SIPOC")
-    st.markdown("نظرة شاملة للعملية: الموردون، المدخلات، العملية، المخرجات، العملاء.")
+    st.markdown("نظرة شاملة للعملية: الجهة المعنية، المدخلات، العملية، المخرجات، العملاء.")
 
     processes = get_processes()
     if processes:
@@ -980,7 +980,7 @@ elif menu == "📋 SIPOC":
                 st.subheader("✏️ عدل جدول SIPOC")
                 col1, col2 = st.columns(2)
                 with col1:
-                    sup = st.text_area("**S - الموردون (Suppliers)**", value=suppliers, height=100)
+                    sup = st.text_area("**S - الجهة المعنية (Suppliers)**", value=suppliers, height=100)
                     inp = st.text_area("**I - المدخلات (Inputs)**", value=inputs_list, height=100)
                     proc = st.text_area("**P - العملية (Process)**", value=process_desc, height=100)
                 with col2:
@@ -992,7 +992,7 @@ elif menu == "📋 SIPOC":
                     
                     # عرض الجدول النهائي
                     df_sipoc = pd.DataFrame({
-                        "المكون": ["S - الموردون", "I - المدخلات", "P - العملية", "O - المخرجات", "C - العملاء"],
+                        "المكون": ["S - الجهة المعنية", "I - المدخلات", "P - العملية", "O - المخرجات", "C - العملاء"],
                         "الوصف": [sup, inp, proc, outp, cust]
                     })
                     st.dataframe(df_sipoc, use_container_width=True)
@@ -1318,7 +1318,7 @@ elif menu == "📄 تقرير العملية":
                 st.markdown(f"## 🏷️ بطاقة تعريف العملية (SIPOC)")
                 col_s, col_i = st.columns(2)
                 with col_s:
-                    st.markdown(f"**S - الموردون:** {suppliers}")
+                    st.markdown(f"**S - الجهة المعنية:** {suppliers}")
                     st.markdown(f"**I - المدخلات:** {inputs_list}")
                     st.markdown(f"**P - العملية:** {process_desc}")
                 with col_i:
@@ -1511,7 +1511,7 @@ elif menu == "📄 تقرير PDF":
     </div>
 
     <h2 class="section-title">📋 تفاصيل العملية (SIPOC)</h2>
-    <p><b>S - الموردون:</b> جميع الجهات الحكومية</p>
+    <p><b>S - الجهة المعنية:</b> جميع الجهات الحكومية</p>
     <p><b>I - المدخلات:</b> طلب مكتمل، مستندات ثبوتية</p>
     <p><b>P - العملية:</b> {' → '.join([s.step_name for s in steps])}</p>
     <p><b>O - المخرجات:</b> معاملة منجزة، إشعار</p>
