@@ -1123,21 +1123,35 @@ elif menu == "📊 مخطط BPMN":
                 if i < len(steps) - 1:
                     st.markdown("<div style='text-align:center; color:#7f8c8d;'>⬇️</div>", unsafe_allow_html=True)
             
-                      # وسيلة الإيضاح
+                                # وسيلة الإيضاح
             st.markdown("---")
             st.markdown("### 🔍 وسيلة الإيضاح")
+            
             col1, col2, col3 = st.columns(3)
+            
             with col1:
-                st.markdown("#### 🟢 VA (قيمة مضافة)")
-                st.caption("العميل يدفع مقابلها")
+                st.markdown("""
+                <div style="background-color:#2ecc71; padding:10px; border-radius:5px; color:white; text-align:center;">
+                    <b>VA (قيمة مضافة)</b><br>
+                    <small>العميل يدفع مقابلها</small>
+                </div>
+                """, unsafe_allow_html=True)
+            
             with col2:
-                st.markdown("#### 🟠 BNVA (ضرورية)")
-                st.caption("إجراء قانوني / رقابي")
+                st.markdown("""
+                <div style="background-color:#f39c12; padding:10px; border-radius:5px; color:black; text-align:center;">
+                    <b>BNVA (ضرورية)</b><br>
+                    <small>إجراء قانوني / رقابي</small>
+                </div>
+                """, unsafe_allow_html=True)
+            
             with col3:
-                st.markdown("#### 🔴 NVA (هدر)")
-                st.caption("يمكن ويجب إلغاؤها")
-        else:
-            st.info("لا توجد خطوات لهذه العملية.")
+                st.markdown("""
+                <div style="background-color:#e74c3c; padding:10px; border-radius:5px; color:white; text-align:center;">
+                    <b>NVA (هدر)</b><br>
+                    <small>يمكن ويجب إلغاؤها</small>
+                </div>
+                """, unsafe_allow_html=True)
     else:
         st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
