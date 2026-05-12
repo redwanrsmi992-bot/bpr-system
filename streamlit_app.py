@@ -138,6 +138,7 @@ menu = st.sidebar.radio("القائمة", [
     "مصفوفة الاثر والتاثير",
     "رفع ملف عمليات",
     "🎯 تحليل باريتو (80/20)",
+    "📋 SIPOC",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -824,6 +825,53 @@ elif menu == "🎯 تحليل باريتو (80/20)":
             st.info("حتى الآن، لا توجد عملية واحدة تستحوذ على 80% من الهدر لوحدها.")
     else:
         st.info("لا توجد عمليات بعد لتحليلها.")
+        # ================== SIPOC ==================
+elif menu == "📋 SIPOC":
+    st.subheader("📋 تحليل SIPOC")
+    st.markdown("نظرة شاملة للعملية: الموردون، المدخلات، العملية، المخرجات، العملاء.")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية", pnames)
+        pid = int(sel.split(" - ")[0])
+        steps = get_steps(pid)
+
+        if steps:
+            # اقتراح تلقائي للبيانات
+            suppliers = "جميع الجهات الحكومية (وزارات، دوائر)"
+            inputs_list = "طلب مكتمل، مستندات ثبوتية، موافقات سابقة"
+            
+            # العملية = أسماء الخطوات
+            process_desc = " → ".join([s.step_name for s in steps])
+            
+            outputs_list = "معاملة منجزة، إشعار إلكتروني"
+            customers = "المستفيد النهائي، جهة رقابية، ديوان المحاسبة"
+
+            with st.form("sipoc_form"):
+                st.subheader("✏️ عدل جدول SIPOC")
+                col1, col2 = st.columns(2)
+                with col1:
+                    sup = st.text_area("**S - الموردون (Suppliers)**", value=suppliers, height=100)
+                    inp = st.text_area("**I - المدخلات (Inputs)**", value=inputs_list, height=100)
+                    proc = st.text_area("**P - العملية (Process)**", value=process_desc, height=100)
+                with col2:
+                    outp = st.text_area("**O - المخرجات (Outputs)**", value=outputs_list, height=100)
+                    cust = st.text_area("**C - العملاء (Customers)**", value=customers, height=100)
+
+                if st.form_submit_button("💾 حفظ وعرض SIPOC"):
+                    st.success("تم تحديث SIPOC")
+                    
+                    # عرض الجدول النهائي
+                    df_sipoc = pd.DataFrame({
+                        "المكون": ["S - الموردون", "I - المدخلات", "P - العملية", "O - المخرجات", "C - العملاء"],
+                        "الوصف": [sup, inp, proc, outp, cust]
+                    })
+                    st.dataframe(df_sipoc, use_container_width=True)
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
 elif menu == "دليل الاستخدام":
     st.subheader("دليل استخدام نظام اعادة هندسة العمليات")
