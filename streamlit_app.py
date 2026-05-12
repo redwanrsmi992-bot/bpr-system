@@ -526,7 +526,7 @@ elif menu == "لوحة التحكم":
 
         st.markdown("---")
 
-        # --- 2. جدول ملخص العمليات ---
+             # --- 2. جدول ملخص العمليات ---
         st.subheader("📋 ملخص جميع العمليات")
         summary_data = []
         for proc in all_processes:
@@ -543,6 +543,7 @@ elif menu == "لوحة التحكم":
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
+                # تحديد الحالة
                 if flow_eff < 5:
                     status = "[خطر]"
                 elif flow_eff < 20:
@@ -555,10 +556,10 @@ elif menu == "لوحة التحكم":
             summary_data.append({
                 "العملية": p.name,
                 "الفئة": p.category,
-                "⏳ وقت الانتظار (دقيقة)": f"{wait:,.0f}",
-                "⚡ كفاءة التدفق": f"{flow_eff:.1f}%",
-                "🕐 زمن الدورة (ساعة)": f"{lead_time/60:.1f}",
-                "💸 التكلفة السنوية (د.أ)": f"{annual_cost_val:,.2f}",
+                "وقت الانتظار": f"{wait:,.0f} دقيقة",
+                "كفاءة التدفق": f"{flow_eff:.1f}%",
+                "زمن الدورة": f"{lead_time/60:.1f} ساعة",
+                "التكلفة السنوية": f"{annual_cost_val:,.2f} د.أ",
                 "الحالة": status
             })
         
