@@ -51,13 +51,81 @@ def get_processes():
             _ = p.steps
         return processes
 
+def get_process_by_id(pid):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            _ = p.steps
+        return p
+
+def get_steps(pid):
+    with app.app_context():
+        return Step.query.filter_by(process_id=pid).order_by(Step.step_order).all()
+
+def add_process_to_db(name, category, freq, status):
+    with app.app_context():
+        p = Process(name=name, category=category, annual_frequency=freq, status=status)
+        db.session.add(p)
+        db.session.commit()
+
+def update_process_in_db(pid, name, category, freq, status):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            p.name = name
+            p.category = category
+            p.annual_frequency = freq
+            p.status = status
+            db.session.commit()
+            return True
+        return False
+
+def delete_process_from_db(pid):
+    with app.app_context():
+        p = Process.query.get(pid)
+        if p:
+            db.session.delete(p)
+            db.session.commit()
+            return True
+        return False
+
 def add_employee_to_db(title, cost):
     with app.app_context():
         e = Employee(title=title, monthly_cost=cost)
         db.session.add(e)
         db.session.commit()
 
-# (هنا توجد باقي الدوال المساعدة، لكن نختصر لضمان المساحة)
+def update_employee_in_db(eid, title, cost):
+    with app.app_context():
+        e = Employee.query.get(eid)
+        if e:
+            e.title = title
+            e.monthly_cost = cost
+            db.session.commit()
+            return True
+        return False
+
+def delete_employee_from_db(eid):
+    with app.app_context():
+        e = Employee.query.get(eid)
+        if e:
+            db.session.delete(e)
+            db.session.commit()
+            return True
+        return False
+
+def get_employees():
+    with app.app_context():
+        return Employee.query.all()
+
+def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
+    with app.app_context():
+        s = Step(process_id=pid, employee_id=eid, step_order=order,
+                 step_name=name, processing_time_minutes=pt,
+                 wait_time_minutes=wt, step_type=stype,
+                 system_used=sys_used, waste_category=waste)
+        db.session.add(s)
+        db.session.commit()
 
 # ---- القائمة الجانبية ----
 menu = st.sidebar.radio("القائمة", ["الرئيسية", "اضافة موظف", "اضافة عملية", "اضافة خطوات", "لوحة التحكم", "رحلة العميل", "مصفوفة الاثر والتاثير", "دليل الاستخدام"])
