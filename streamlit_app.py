@@ -492,15 +492,13 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-# ================== لوحة التحكم المتطورة (مصححة) ==================
 elif menu == "لوحة التحكم":
-    st.subheader("📊 لوحة القيادة (Executive Dashboard)")
+    st.subheader("📊 لوحة القيادة")
     st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
 
     all_processes = get_processes()
     
     if all_processes:
-        # --- 1. بطاقات الملخص العام ---
         total_processes = len(all_processes)
         total_waste_minutes = 0
         total_processing_minutes = 0
@@ -526,7 +524,6 @@ elif menu == "لوحة التحكم":
 
         st.markdown("---")
 
-             # --- 2. جدول ملخص العمليات ---
         st.subheader("📋 ملخص جميع العمليات")
         summary_data = []
         for proc in all_processes:
@@ -543,15 +540,14 @@ elif menu == "لوحة التحكم":
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
-                # تحديد الحالة
                 if flow_eff < 5:
-                    status = "[خطر]"
+                    status = "خطر"
                 elif flow_eff < 20:
-                    status = "[سيء]"
+                    status = "سيء"
                 elif flow_eff < 40:
-                    status = "[مقبول]"
+                    status = "مقبول"
                 else:
-                    status = "[جيد]"
+                    status = "جيد"
 
             summary_data.append({
                 "العملية": p.name,
@@ -568,7 +564,6 @@ elif menu == "لوحة التحكم":
 
         st.markdown("---")
 
-        # --- 3. أهم 3 عمليات تحتاج تدخلاً ---
         st.subheader("🚨 أهم 3 عمليات تحتاج تدخلاً فورياً")
         pareto_data = []
         for proc in all_processes:
@@ -588,7 +583,7 @@ elif menu == "لوحة التحكم":
                     st.caption("ابدأ بتحسين هذه العملية فوراً.")
 
     else:
-        st.info("لا توجد عمليات بعد. أضف عمليات من القائمة الجانبية لعرض لوحة القيادة.")
+        st.info("لا توجد عمليات بعد.")
 
 # ================== رحلة متلقي الخدمة ==================
 elif menu == "رحلة متلقي الخدمة":
