@@ -489,71 +489,98 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-# ================== لوحة التحكم ==================
+# ================== لوحة التحكم المتطورة ==================
 elif menu == "لوحة التحكم":
-    st.subheader("لوحة التحكم")
-    processes = get_processes()
-    if processes:
-        pnames = [f"{p.id} - {p.name}" for p in processes]
-        sel = st.selectbox("اختر العملية", pnames)
-        pid = int(sel.split(" - ")[0])
-        process = get_process_by_id(pid)
-        steps = get_steps(pid)
-        if process and steps:
-            with app.app_context():
-                p = Process.query.get(pid)
-                eff = p.flow_efficiency
-                lead = p.lead_time_minutes
-                cost = p.annual_cost
-                 # حساب التكلفة الشاملة بطريقة صحيحة
-            total_wait_cost = 0
-            for s in steps:
-                with app.app_context():
-                    emp = Employee.query.get(s.employee_id)
-                    if emp and s.wait_time_minutes:
-                        total_wait_cost += (s.wait_time_minutes * emp.cost_per_minute)
-            
-            # التكلفة الشاملة = (تكلفة العمل للتنفيذ الواحد + تكلفة الانتظار للتنفيذ الواحد) × التكرار
-            cost_per_execution = cost / p.annual_frequency
-            comprehensive_annual = (cost_per_execution + total_wait_cost) * p.annual_frequency
+    st.subheader("📊 لوحة القيادة (Executive Dashboard)")
+    st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
 
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("كفاءة التدفق", f"{eff:.2f}%")
-            c2.metric("زمن الدورة (ساعة)", f"{lead/60:.1f}")
-            c3.metric("التكلفة السنوية (عمل فقط)", f"{cost:,.2f} د.ا")
-            c4.metric("💸 التكلفة الشاملة", f"{comprehensive_annual:,.2f} د.ا")
-            sn = [s.step_name for s in steps]
-            pt = [s.processing_time_minutes or 0 for s in steps]
-            wt = [s.wait_time_minutes or 0 for s in steps]
-            bar1 = go.Bar(name='وقت العمل', x=sn, y=pt, marker_color='green')
-            bar2 = go.Bar(name='وقت الانتظار', x=sn, y=wt, marker_color='red')
-            fig = go.Figure(data=[bar1, bar2])
-            fig.update_layout(barmode='stack', xaxis_tickangle=-45, height=400)
-            st.plotly_chart(fig, use_container_width=True)
-            pie = go.Figure(data=[go.Pie(labels=['عمل', 'انتظار'],
-                                          values=[sum(pt), sum(wt)],
-                                          marker_colors=['green', 'red'])])
-            st.plotly_chart(pie, use_container_width=True)
-            tdata = []
-            for s in steps:
-                with app.app_context():
-                    emp = Employee.query.get(s.employee_id)
-                    emp_title = emp.title if emp else "-"
-                tdata.append({
-                    "#": s.step_order,
-                    "الخطوة": s.step_name,
-                    "الموظف": emp_title,
-                    "وقت العمل": s.processing_time_minutes,
-                    "وقت الانتظار": s.wait_time_minutes,
-                    "النوع": s.step_type,
-                    "النظام": s.system_used or "-",
-                    "الهدر": s.waste_category or "-"
-                })
-            st.dataframe(pd.DataFrame(tdata), use_container_width=True)
-        else:
-            st.info("لا توجد خطوات لهذه العملية")
+    all_processes = get_processes()
+    
+    if all_processes:
+        # --- 1. بطاقات الملخص العام (Summary KPIs) ---
+        total_processes = len(all_processes)
+        total_waste_minutes = 0
+        total_processing_minutes = 0
+        total_annual_cost_comprehensive = 0
+        
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                total_waste_minutes += wait
+                total_processing_minutes += proc_time
+                # حساب التكلفة الشاملة (تقديرية)
+                cost_per_min = 0.1  # يمكن تعديلها
+                total_annual_cost_comprehensive += (proc_time + wait) * cost_per_min * p.annual_frequency
+
+        avg_flow_eff = (total_processing_minutes / (total_processing_minutes + total_waste_minutes) * 100) if (total_processing_minutes + total_waste_minutes) > 0 else 0
+        
+        st.markdown("### 🎯 ملخص الأداء العام")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("📋 إجمالي العمليات", total_processes)
+        col2.metric("⚡ متوسط كفاءة التدفق", f"{avg_flow_eff:.1f}%")
+        col3.metric("⏳ إجمالي وقت الهدر (دقيقة)", f"{total_waste_minutes:,.0f}")
+        col4.metric("💸 إجمالي التكلفة الشاملة (سنوياً)", f"{total_annual_cost_comprehensive:,.2f} د.أ")
+
+        st.markdown("---")
+
+        # --- 2. جدول ملخص العمليات ---
+        st.subheader("📋 ملخص جميع العمليات")
+        summary_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+                
+                if flow_eff < 5:
+                    status = "🔴 خطر"
+                elif flow_eff < 20:
+                    status = "🟠 سيء"
+                elif flow_eff < 40:
+                    status = "🟡 مقبول"
+                else:
+                    status = "🟢 جيد"
+
+            summary_data.append({
+                "العملية": p.name,
+                "الفئة": p.category,
+                "كفاءة التدفق": f"{flow_eff:.1f}%",
+                "زمن الدورة (ساعة)": f"{lead_time/60:.1f}",
+                "التكلفة السنوية (د.أ)": f"{p.annual_cost:,.2f}",
+                "الحالة": status
+            })
+        
+        df_summary = pd.DataFrame(summary_data)
+        st.dataframe(df_summary, use_container_width=True)
+
+        st.markdown("---")
+
+        # --- 3. أهم 3 عمليات تحتاج تدخلاً (Pareto Mini) ---
+        st.subheader("🚨 أهم 3 عمليات تحتاج تدخلاً فورياً")
+        pareto_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+            pareto_data.append({"name": p.name, "waste": wait})
+        
+        df_pareto = pd.DataFrame(pareto_data).sort_values(by="waste", ascending=False).head(3)
+        
+        if not df_pareto.empty:
+            col1, col2, col3 = st.columns(3)
+            cols = [col1, col2, col3]
+            for i, (_, row) in enumerate(df_pareto.iterrows()):
+                with cols[i]:
+                    st.error(f"**#{i+1}: {row['name']}**")
+                    st.metric("وقت الهدر (دقيقة)", f"{row['waste']:,.0f}")
+                    st.caption("ابدأ بتحسين هذه العملية فوراً.")
+
     else:
-        st.info("لا توجد عمليات بعد")
+        st.info("لا توجد عمليات بعد. أضف عمليات من القائمة الجانبية لعرض لوحة القيادة.")
 
 # ================== رحلة العميل ==================
 elif menu == "رحلة العميل":
