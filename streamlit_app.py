@@ -1439,6 +1439,13 @@ elif menu == "📄 تقرير PDF":
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
 
+                # تجهيز بيانات الموظفين داخل الجلسة مرة واحدة
+                employee_names = {}
+                for s in steps:
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        employee_names[s.id] = emp.title if emp else "-"
+
                 # تجهيز خطوات التوصيات
                 rec_list = []
                 for s in steps:
@@ -1451,7 +1458,7 @@ elif menu == "📄 تقرير PDF":
                 # تجهيز خطوات العملية كصفوف جدول
                 steps_rows = ""
                 for i, s in enumerate(steps):
-                    emp_title = s.employee.title if s.employee else "-"
+                    emp_title = employee_names.get(s.id, "-")
                     row_color = "#f8d7da" if s.step_type == 'NVA' else ("#fff3cd" if s.step_type == 'BNVA' else "#d4edda")
                     steps_rows += f"""
                     <tr style="background-color: {row_color};">
@@ -1462,7 +1469,6 @@ elif menu == "📄 تقرير PDF":
                         <td>{s.processing_time_minutes} دقيقة</td>
                         <td>{s.wait_time_minutes} دقيقة</td>
                     </tr>"""
-
             # بناء تقرير HTML كامل
             html_report = f"""
             <html dir="rtl">
