@@ -258,6 +258,51 @@ elif menu == "اضافة خطوات":
                 stype = st.selectbox("نوع الخطوة", ["VA", "BNVA", "NVA"])
                 system = st.selectbox("النظام المستخدم", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"])
                 waste = st.text_input("فئة الهدر (ان وجدت)")
+                            # مساعد تحليل نوع الخطوة
+            with st.expander("💡 تحليل نوع الخطوة (مساعد)"):
+                if st.button("حلل هذه الخطوة", key="analyze_step"):
+                    name_lower = sname.lower() if sname else ""
+                    waste_lower = waste.lower() if waste else ""
+                    
+                    # كلمات مفتاحية للتحليل
+                    wait_keywords = ["انتظار", "توقيع", "اعتماد", "مراجعة", "انتظر"]
+                    rework_keywords = ["تصحيح", "إعادة", "خطأ", "تعديل"]
+                    system_keywords = ["نظام", "أدخل", "سجل", "أرشفة", "gfm", "oracle", "outlook"]
+                    value_keywords = ["تسجيل", "طلب", "دفع", "اصدار", "تحويل", "تنفيذ", "صرف"]
+                    
+                    # المنطق التحليلي
+                    is_wait = any(kw in name_lower for kw in wait_keywords) and (waste_lower == "انتظار" or waste_lower == "")
+                    is_rework = any(kw in name_lower for kw in rework_keywords)
+                    is_system = any(kw in name_lower for kw in system_keywords)
+                    is_value = any(kw in name_lower for kw in value_keywords)
+                    
+                    if is_wait or waste_lower == "انتظار":
+                        suggested_type = "NVA"
+                        reason = "العميل لا يدفع مقابل الانتظار. هذه الخطوة لا تغير المعاملة، بل توقفها."
+                        advice = "🚀 حاول إلغاء وقت الانتظار هذا عبر التوقيع الإلكتروني."
+                    elif is_rework:
+                        suggested_type = "NVA"
+                        reason = "إعادة العمل أو تصحيح الأخطاء لا يضيف قيمة. إنه هدر ناتج عن خلل سابق."
+                        advice = "🔧 عالج سبب الخطأ بدلاً من تصحيحه. هذه الخطوة يجب أن تختفي."
+                    elif is_value and not is_wait:
+                        suggested_type = "VA"
+                        reason = "العميل يهتم بهذه الخطوة. إنها تغير المعاملة وتضيف قيمة مباشرة."
+                        advice = "✅ حافظ على هذه الخطوة وحاول تحسين وقتها فقط."
+                    elif is_system:
+                        suggested_type = "BNVA"
+                        reason = "هذه الخطوة ضرورية للنظام أو القانون، لكن العميل لا يراها ولا يدفع مقابلها."
+                        advice = "⚙️ حاول أتمتتها بالكامل لتقليل وقتها."
+                    else:
+                        suggested_type = "BNVA"
+                        reason = "تبدو كخطوة إدارية ضرورية، لكنها لا تضيف قيمة مباشرة للعميل."
+                        advice = "📋 راجع إذا كان يمكن دمجها أو أتمتتها."
+                    
+                    # عرض النتيجة
+                    color = {"VA": "green", "BNVA": "orange", "NVA": "red"}
+                    st.markdown(f"### النوع المقترح: :{color[suggested_type]}[{suggested_type}]")
+                    st.markdown(f"**لماذا؟** {reason}")
+                    st.markdown(f"**التوصية:** {advice}")
+                    st.info("هذا تحليل مساعد. يمكنك تعديل التصنيف يدوياً حسب معرفتك الدقيقة بالعملية.")
                 if st.form_submit_button("💾 حفظ الخطوة"):
                     pid = int(pid_sel.split(" - ")[0])
                     eid = int(eid_sel.split(" - ")[0])
