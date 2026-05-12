@@ -1066,49 +1066,33 @@ elif menu == "📊 RACI":
 elif menu == "🗺️ الخريطة الحرارية":
     st.subheader("🗺️ الخريطة الحرارية للعمليات")
     st.markdown("نظرة شاملة على صحة جميع العمليات. ركز على العمليات الحمراء أولاً.")
-
     all_processes = get_processes()
     if all_processes:
         heatmap_data = []
         for proc in all_processes:
             with app.app_context():
                 p = Process.query.get(proc.id)
-                total_wait = sum((s.wait_time_minutes or 0) for s in p.steps)
-                total_processing = sum((s.processing_time_minutes or 0) for s in p.steps)
-                lead_time = total_processing + total_wait
-                flow_eff = (total_processing / lead_time * 100) if lead_time > 0 else 100
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
                 annual_cost = p.annual_cost
-
-                if flow_eff < 5:
-                    status = "[خطر]"
-                elif flow_eff < 20:
-                    status = "[سيء]"
-                elif flow_eff < 40:
-                    status = "[مقبول]"
-                else:
-                    status = "[جيد]"
-
             heatmap_data.append({
                 "العملية": p.name,
                 "الفئة": p.category,
                 "كفاءة التدفق %": f"{flow_eff:.1f}%",
                 "زمن الدورة (ساعة)": round(lead_time / 60, 1),
-                "وقت الانتظار (ساعة)": round(total_wait / 60, 1),
-                "التكلفة الشاملة (د.أ)": round(annual_cost + (total_wait * 0.1), 0),
-                "مستوى الخطر": risk
+                "وقت الانتظار (ساعة)": round(wait / 60, 1),
+                "التكلفة الشاملة (د.أ)": round(annual_cost + (wait * 0.1), 0)
             })
-        
         df_heatmap = pd.DataFrame(heatmap_data)
         st.dataframe(df_heatmap, use_container_width=True)
-        
         st.markdown("---")
         st.markdown("### 🎯 أولويات التحسين")
-             st.markdown("""
-        - <span style='color:#e74c3c; font-size:18px;'>●</span> **خطر:** ابدأ بهذه العمليات فوراً
-        - <span style='color:#f39c12; font-size:18px;'>●</span> **سيء:** خطط لتحسينها هذا الشهر
-        - <span style='color:#f1c40f; font-size:18px;'>●</span> **مقبول:** جدولها للربع القادم
-        - <span style='color:#2ecc71; font-size:18px;'>●</span> **جيد:** راقبها وحافظ على أدائها
-        """, unsafe_allow_html=True)
+        st.markdown("- **خطر:** ابدأ بهذه العمليات فوراً")
+        st.markdown("- **سيء:** خطط لتحسينها هذا الشهر")
+        st.markdown("- **مقبول:** جدولها للربع القادم")
+        st.markdown("- **جيد:** راقبها وحافظ على أدائها")
     else:
         st.info("لا توجد عمليات بعد.")
         # ================== توصيات التحسين ==================
