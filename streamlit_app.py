@@ -545,7 +545,7 @@ elif menu == "لوحة التحكم":
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
                 # تقييم الحالة
-                if flow_eff < 5:
+                               if flow_eff < 5:
                     status = "🔴 خطر"
                 elif flow_eff < 20:
                     status = "🟠 سيء"
@@ -1086,14 +1086,14 @@ elif menu == "🗺️ الخريطة الحرارية":
                 annual_cost = p.annual_cost
 
             # تحديد مستوى الخطر
-            if flow_eff < 5:
-                risk = "🔴 خطر"
-            elif flow_eff < 20:
-                risk = "🟠 سيء"
-            elif flow_eff < 40:
-                risk = "🟡 مقبول"
-            else:
-                risk = "🟢 جيد"
+                           if flow_eff < 5:
+                    status = "🔴 خطر"
+                elif flow_eff < 20:
+                    status = "🟠 سيء"
+                elif flow_eff < 40:
+                    status = "🟡 مقبول"
+                else:
+                    status = "🟢 جيد"
 
             heatmap_data.append({
                 "العملية": p.name,
@@ -1110,10 +1110,12 @@ elif menu == "🗺️ الخريطة الحرارية":
         
         st.markdown("---")
         st.markdown("### 🎯 أولويات التحسين")
-        st.markdown("- 🔴 **خطر:** ابدأ بهذه العمليات فوراً")
-        st.markdown("- 🟠 **سيء:** خطط لتحسينها هذا الشهر")
-        st.markdown("- 🟡 **مقبول:** جدولها للربع القادم")
-        st.markdown("- 🟢 **جيد:** راقبها وحافظ على أدائها")
+             st.markdown("""
+        - <span style='color:#e74c3c; font-size:18px;'>●</span> **خطر:** ابدأ بهذه العمليات فوراً
+        - <span style='color:#f39c12; font-size:18px;'>●</span> **سيء:** خطط لتحسينها هذا الشهر
+        - <span style='color:#f1c40f; font-size:18px;'>●</span> **مقبول:** جدولها للربع القادم
+        - <span style='color:#2ecc71; font-size:18px;'>●</span> **جيد:** راقبها وحافظ على أدائها
+        """, unsafe_allow_html=True)
     else:
         st.info("لا توجد عمليات بعد.")
         # ================== توصيات التحسين ==================
