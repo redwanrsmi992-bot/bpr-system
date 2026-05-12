@@ -1079,7 +1079,7 @@ elif menu == "🗺️ الخريطة الحرارية":
                 flow_eff = (total_processing / lead_time * 100) if lead_time > 0 else 100
                 annual_cost = p.annual_cost
 
-                        if flow_eff < 5:
+                if flow_eff < 5:
                     status = "[خطر]"
                 elif flow_eff < 20:
                     status = "[سيء]"
