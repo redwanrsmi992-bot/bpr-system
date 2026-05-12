@@ -1411,15 +1411,15 @@ elif menu == "📄 تقرير العملية":
             st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
-        # ================== تقرير PDF ==================
+# ================== تقرير PDF ==================
 elif menu == "📄 تقرير PDF":
-    st.subheader("📄 تصدير تقرير PDF احترافي")
-    st.markdown("اختر العملية وسيتم توليد ملف PDF جاهز للطباعة والعرض على الإدارة.")
+    st.subheader("📄 تصدير تقرير احترافي (PDF)")
+    st.markdown("اختر العملية وسيتم عرض تقرير جاهز للطباعة أو الحفظ كـ PDF من المتصفح.")
 
     processes = get_processes()
     if processes:
         pnames = [f"{p.id} - {p.name}" for p in processes]
-        sel = st.selectbox("اختر العملية لتصدير تقرير PDF", pnames)
+        sel = st.selectbox("اختر العملية لمعاينة تقريرها", pnames)
         pid = int(sel.split(" - ")[0])
         process = get_process_by_id(pid)
         steps = get_steps(pid)
@@ -1439,132 +1439,104 @@ elif menu == "📄 تقرير PDF":
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
 
-            # زر توليد PDF
-            if st.button("📥 توليد وتحميل PDF", use_container_width=True):
-                try:
-                    from fpdf import FPDF
+                # تجهيز خطوات التوصيات
+                rec_list = []
+                for s in steps:
+                    if s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 1440:
+                        rec_list.append(f"<li>🚀 أتمتة '{s.step_name}': توفير {s.wait_time_minutes} دقيقة عبر التوقيع الإلكتروني.</li>")
+                    elif s.system_used == 'ورقي':
+                        rec_list.append(f"<li>📄 رقمنة '{s.step_name}': تحويلها إلى إلكترونية.</li>")
+                rec_html = "".join(rec_list) if rec_list else "لا توجد توصيات حرجة."
 
-                    pdf = FPDF(orientation='P', unit='mm', format='A4')
-                    pdf.add_page()
-                    
-                    # إضافة الخط العربي
-                    pdf.add_font('Tajawal', '', 'https://fonts.gstatic.com/s/tajawal/v9/pxiEyp8jdW7jE1IN4mM.ttf', uni=True)
-                    pdf.add_font('Tajawal', 'B', 'https://fonts.gstatic.com/s/tajawal/v9/pxiByp8jdW7jE1IN4m5zyVlv.ttf', uni=True)
-                    
-                    # العنوان الرئيسي
-                    pdf.set_font('Tajawal', 'B', 22)
-                    pdf.set_text_color(30, 41, 59)
-                    pdf.cell(0, 15, f"تقرير تحليل عملية: {process.name}", ln=True, align='C')
-                    pdf.ln(5)
-                    
-                    # خط فاصل
-                    pdf.set_draw_color(37, 99, 235)
-                    pdf.set_line_width(0.8)
-                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                    pdf.ln(8)
-                    
-                    # --- قسم مؤشرات الأداء ---
-                    pdf.set_font('Tajawal', 'B', 16)
-                    pdf.set_text_color(37, 99, 235)
-                    pdf.cell(0, 10, "مؤشرات الأداء الرئيسية", ln=True, align='R')
-                    pdf.ln(3)
-                    
-                    pdf.set_font('Tajawal', '', 12)
-                    pdf.set_text_color(51, 51, 51)
-                    kpis = [
-                        f"كفاءة التدفق: {flow_eff:.1f}%",
-                        f"زمن الدورة: {lead_time/60:.1f} ساعة",
-                        f"وقت الانتظار: {wait/60:.1f} ساعة",
-                        f"التكلفة السنوية: {annual_cost_val:,.2f} د.أ"
-                    ]
-                    for kpi in kpis:
-                        pdf.cell(0, 8, kpi, ln=True, align='R')
-                    pdf.ln(5)
-                    
-                    # --- قسم SIPOC ---
-                    pdf.set_font('Tajawal', 'B', 16)
-                    pdf.set_text_color(37, 99, 235)
-                    pdf.cell(0, 10, "بطاقة تعريف العملية (SIPOC)", ln=True, align='R')
-                    pdf.ln(3)
-                    
-                    pdf.set_font('Tajawal', '', 11)
-                    pdf.set_text_color(51, 51, 51)
-                    sipoc_items = [
-                        "S - الموردون: جميع الجهات الحكومية",
-                        "I - المدخلات: طلب مكتمل، مستندات ثبوتية",
-                        f"P - العملية: {' -> '.join([s.step_name for s in steps])}",
-                        "O - المخرجات: معاملة منجزة، إشعار",
-                        "C - العملاء: المستفيد النهائي، جهة رقابية"
-                    ]
-                    for item in sipoc_items:
-                        pdf.cell(0, 7, item, ln=True, align='R')
-                    pdf.ln(5)
-                    
-                    # --- قسم الخطوات ---
-                    pdf.set_font('Tajawal', 'B', 16)
-                    pdf.set_text_color(37, 99, 235)
-                    pdf.cell(0, 10, f"خطوات العملية ({len(steps)} خطوة)", ln=True, align='R')
-                    pdf.ln(3)
-                    
-                    pdf.set_font('Tajawal', '', 10)
-                    for s in steps:
-                        with app.app_context():
-                            emp = Employee.query.get(s.employee_id)
-                            emp_title = emp.title if emp else "-"
-                        
-                        if s.step_type == 'VA':
-                            status_text = "VA (قيمة مضافة)"
-                        elif s.step_type == 'BNVA':
-                            status_text = "BNVA (ضرورية)"
-                        else:
-                            status_text = "NVA (هدر خالص)"
-                        
-                        step_text = f"{s.step_order}. {s.step_name} | {status_text} | {emp_title} | عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د"
-                        pdf.cell(0, 7, step_text, ln=True, align='R')
-                    pdf.ln(5)
-                    
-                    # --- قسم التوصيات ---
-                    pdf.set_font('Tajawal', 'B', 16)
-                    pdf.set_text_color(37, 99, 235)
-                    pdf.cell(0, 10, "توصيات التحسين", ln=True, align='R')
-                    pdf.ln(3)
-                    
-                    pdf.set_font('Tajawal', '', 11)
-                    pdf.set_text_color(51, 51, 51)
-                    recs = []
-                    for s in steps:
-                        if s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 1440:
-                            recs.append(f"• أتمتة '{s.step_name}': توفير {s.wait_time_minutes} دقيقة عبر التوقيع الإلكتروني.")
-                        elif s.system_used == 'ورقي':
-                            recs.append(f"• رقمنة '{s.step_name}': تحويلها إلى إلكترونية.")
-                    
-                    if recs:
-                        for r in recs:
-                            pdf.cell(0, 7, r, ln=True, align='R')
-                    else:
-                        pdf.cell(0, 7, "لا توجد توصيات حرجة.", ln=True, align='R')
-                    
-                    # --- تذييل ---
-                    pdf.ln(10)
-                    pdf.set_font('Tajawal', '', 9)
-                    pdf.set_text_color(128, 128, 128)
-                    pdf.cell(0, 5, "تم إنشاء هذا التقرير بواسطة نظام إعادة هندسة العمليات - دائرة الموازنة العامة", ln=True, align='C')
-                    
-                    # حفظ الملف
-                    pdf_output = pdf.output(dest='S').encode('latin-1')
-                    
-                    st.download_button(
-                        "⬇️ تحميل ملف PDF",
-                        data=pdf_output,
-                        file_name=f"تقرير_{process.name}.pdf",
-                        mime="application/pdf"
-                    )
-                    st.success("✅ تم توليد PDF بنجاح! اضغط على الزر أعلاه للتحميل.")
-                    
-                except ImportError:
-                    st.error("⚠️ مكتبة fpdf2 غير مثبتة. تأكد من إضافتها إلى requirements.txt.")
-                except Exception as e:
-                    st.error(f"حدث خطأ: {e}")
+                # تجهيز خطوات العملية كصفوف جدول
+                steps_rows = ""
+                for i, s in enumerate(steps):
+                    emp_title = s.employee.title if s.employee else "-"
+                    row_color = "#f8d7da" if s.step_type == 'NVA' else ("#fff3cd" if s.step_type == 'BNVA' else "#d4edda")
+                    steps_rows += f"""
+                    <tr style="background-color: {row_color};">
+                        <td>{i+1}</td>
+                        <td>{s.step_name}</td>
+                        <td>{s.step_type}</td>
+                        <td>{emp_title}</td>
+                        <td>{s.processing_time_minutes} دقيقة</td>
+                        <td>{s.wait_time_minutes} دقيقة</td>
+                    </tr>"""
+
+            # بناء تقرير HTML كامل
+            html_report = f"""
+            <html dir="rtl">
+            <head>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+                    body {{ font-family: 'Tajawal', sans-serif; margin: 20px; color: #1e293b; }}
+                    .header {{ text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }}
+                    .header h1 {{ color: #2563eb; margin: 0; }}
+                    .header p {{ color: #64748b; margin: 5px 0 0 0; }}
+                    .section-title {{ color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-top: 20px; }}
+                    .kpi-box {{ display: inline-block; width: 22%; margin: 1%; padding: 10px; background-color: #f8fafc; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+                    .kpi-box h3 {{ margin: 0; font-size: 14px; color: #64748b; }}
+                    .kpi-box p {{ margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #1e293b; }}
+                    table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+                    th {{ background-color: #1e293b; color: white; padding: 10px; }}
+                    td {{ padding: 8px; border: 1px solid #e2e8f0; text-align: center; }}
+                    .footer {{ margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }}
+                    @media print {{ body {{ margin: 0; }} .no-print {{ display: none; }} }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>تقرير تحليل عملية: {process.name}</h1>
+                    <p>دائرة الموازنة العامة - نظام إعادة هندسة العمليات</p>
+                </div>
+
+                <h2 class="section-title">📊 مؤشرات الأداء الرئيسية</h2>
+                <div>
+                    <div class="kpi-box"><h3>كفاءة التدفق</h3><p>{flow_eff:.1f}%</p></div>
+                    <div class="kpi-box"><h3>زمن الدورة</h3><p>{lead_time/60:.1f} ساعة</p></div>
+                    <div class="kpi-box"><h3>وقت الانتظار</h3><p>{wait/60:.1f} ساعة</p></div>
+                    <div class="kpi-box"><h3>التكلفة السنوية</h3><p>{annual_cost_val:,.2f} د.أ</p></div>
+                </div>
+
+                <h2 class="section-title">📋 تفاصيل العملية (SIPOC)</h2>
+                <p><b>S - الموردون:</b> جميع الجهات الحكومية</p>
+                <p><b>I - المدخلات:</b> طلب مكتمل، مستندات ثبوتية</p>
+                <p><b>P - العملية:</b> {' → '.join([s.step_name for s in steps])}</p>
+                <p><b>O - المخرجات:</b> معاملة منجزة، إشعار</p>
+                <p><b>C - العملاء:</b> المستفيد النهائي، جهة رقابية</p>
+
+                <h2 class="section-title">🗺️ خطوات العملية ({len(steps)} خطوة)</h2>
+                <table>
+                    <tr><th>#</th><th>الخطوة</th><th>النوع</th><th>الموظف</th><th>وقت العمل</th><th>وقت الانتظار</th></tr>
+                    {steps_rows}
+                </table>
+
+                <h2 class="section-title">💡 توصيات التحسين</h2>
+                <ul>{rec_html}</ul>
+
+                <div class="footer">
+                    <p>تم إنشاء هذا التقرير بواسطة نظام إعادة هندسة العمليات © 2024</p>
+                </div>
+            </body>
+            </html>
+            """
+
+            # عرض التقرير في إطار داخل التطبيق
+            st.markdown("### 📄 معاينة التقرير")
+            st.components.v1.html(html_report, height=800, scrolling=True)
+
+            # زر الطباعة (حفظ PDF)
+            st.markdown("""
+            <button onclick="window.print()" style="
+                background-color: #2563eb; color: white; border: none;
+                padding: 10px 20px; border-radius: 8px; font-size: 18px;
+                cursor: pointer; width: 100%; margin: 20px 0;
+            ">
+                🖨️ طباعة / حفظ كـ PDF
+            </button>
+            """, unsafe_allow_html=True)
+            st.caption("💡 عند الضغط على الزر أعلاه، اختر 'حفظ كـ PDF' من قائمة الطابعة في المتصفح.")
+
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
