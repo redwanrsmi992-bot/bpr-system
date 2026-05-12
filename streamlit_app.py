@@ -767,7 +767,53 @@ elif menu == "رفع ملف عمليات":
         except Exception as e:
             st.error("حدث خطأ أثناء قراءة الملف. تأكد من التنسيق الصحيح.")
             st.code(str(e))
+# ================== تحليل باريتو ==================
+elif menu == "🎯 تحليل باريتو (80/20)":
+    st.subheader("🎯 تحليل باريتو للهدر في العمليات")
+    st.markdown("هذا التحليل يطبق قاعدة 80/20 لمساعدتك على التركيز على العمليات الأكثر هدراً.")
 
+    all_processes = get_processes()
+    if all_processes:
+        # 1. تجهيز البيانات
+        pareto_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                # حساب الهدر (وقت الانتظار) لكل عملية
+                total_wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+            pareto_data.append({"name": p.name, "waste": total_wait})
+        
+        # 2. الترتيب التنازلي
+        df_pareto = pd.DataFrame(pareto_data).sort_values(by="waste", ascending=False)
+        df_pareto["نسبة مئوية"] = (df_pareto["waste"] / df_pareto["waste"].sum()) * 100
+        df_pareto["تراكمي"] = df_pareto["نسبة مئوية"].cumsum()
+        
+        # 3. الرسم
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name="وقت الهدر (دقيقة)", x=df_pareto["name"], y=df_pareto["waste"], marker_color="#e74c3c"))
+        fig.add_trace(go.Scatter(name="النسبة التراكمية %", x=df_pareto["name"], y=df_pareto["تراكمي"], yaxis="y2", marker_color="#3498db"))
+        fig.update_layout(
+            title="مخطط باريتو",
+            xaxis_title="العمليات",
+            yaxis_title="وقت الهدر (دقيقة)",
+            yaxis2=dict(title="النسبة التراكمية %", overlaying="y", side="right", range=[0, 100]),
+            legend=dict(x=0.01, y=0.99)
+        )
+        st.plotly_chart(fig)
+
+        # 4. التوصية التلقائية
+        st.markdown("---")
+        st.subheader("💡 توصية باريتو")
+        # تحديد العمليات التي تشكل 80% من الهدر
+        vital_few = df_pareto[df_pareto["تراكمي"] <= 80]
+        if not vital_few.empty:
+            names = "، ".join(vital_few["name"].tolist())
+            st.success(f"🎯 **قاعدة 80/20:** التركيز على تحسين هذه العمليات ({names}) سيعالج ما يقارب 80% من إجمالي الهدر.")
+        else:
+            st.info("حتى الآن، لا توجد عملية واحدة تستحوذ على 80% من الهدر لوحدها.")
+    else:
+        st.info("لا توجد عمليات بعد لتحليلها.")
 # ================== دليل الاستخدام ==================
 elif menu == "دليل الاستخدام":
     st.subheader("دليل استخدام نظام اعادة هندسة العمليات")
