@@ -17,7 +17,7 @@ if not st.session_state.authenticated:
         st.markdown("### دخول اعضاء الفريق")
         password = st.text_input("ادخل كلمة المرور", type="password")
         if st.button("دخول", use_container_width=True):
-            if password == "BPR2026":
+            if password == "Redwan2026":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
