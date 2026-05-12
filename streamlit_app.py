@@ -234,6 +234,7 @@ menu = st.sidebar.radio("القائمة", [
     "📊 مخطط BPMN",
     "📄 تقرير العملية",
     "📄 تقرير PDF",
+    "📄 رفع نموذج Word",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -1551,6 +1552,105 @@ elif menu == "📄 تقرير PDF":
             st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
+        # ================== رفع نموذج Word ==================
+elif menu == "📄 رفع نموذج Word":
+    st.subheader("📄 استيراد عملية من نموذج Word")
+    st.markdown("ارفع ملف Word (نموذج توثيق العملية) وسيتم استخراج البيانات تلقائياً.")
+
+    uploaded_docx = st.file_uploader("اختر ملف Word", type=["docx"])
+
+    if uploaded_docx is not None:
+        try:
+            from docx import Document
+            
+            doc = Document(uploaded_docx)
+            
+            # استخراج النص من جميع الجداول
+            extracted_data = {}
+            
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = row.cells
+                    if len(cells) >= 2:
+                        key = cells[0].text.strip()
+                        value = cells[1].text.strip()
+                        if key and value:
+                            extracted_data[key] = value
+            
+            # استخراج النص من الفقرات (للبحث عن المدخلات والمخرجات)
+            all_text = "\n".join([p.text for p in doc.paragraphs])
+            
+            st.markdown("---")
+            st.markdown("### 📋 البيانات المستخرجة من الملف")
+            
+            # محاولة تخمين البيانات
+            process_name = ""
+            category = "روتينية"
+            frequency = 1
+            inputs_text = ""
+            outputs_text = ""
+            steps_text = ""
+            
+            for key, value in extracted_data.items():
+                if "اسم العملية" in key:
+                    process_name = value
+                elif "تصنيف" in key or "فئة" in key:
+                    category = value
+                elif "تكرار" in key:
+                    try:
+                        frequency = int(value)
+                    except:
+                        frequency = 1
+            
+            # استخراج المدخلات والمخرجات من النص العام
+            if "مدخلات" in all_text:
+                input_start = all_text.find("مدخلات")
+                input_end = all_text.find("مخرجات", input_start) if "مخرجات" in all_text else len(all_text)
+                inputs_text = all_text[input_start:input_end].strip()
+            
+            if "مخرجات" in all_text:
+                output_start = all_text.find("مخرجات")
+                output_end = all_text.find("العمليات المرتبطة", output_start) if "العمليات المرتبطة" in all_text else len(all_text)
+                outputs_text = all_text[output_start:output_end].strip()
+            
+            # عرض البيانات المستخرجة في نموذج قابل للتعديل
+            with st.form("import_docx_form"):
+                st.markdown("#### ✏️ عدل البيانات قبل الاستيراد")
+                
+                final_name = st.text_input("اسم العملية", value=process_name)
+                col1, col2 = st.columns(2)
+                with col1:
+                    final_category = st.selectbox("الفئة", ["استراتيجية", "انتصار_سريع", "روتينية", "للدراسة"])
+                    final_freq = st.number_input("التكرار السنوي", min_value=1, value=frequency)
+                with col2:
+                    final_status = st.selectbox("الحالة", ["غير_مبدوء", "تحت_الدراسة", "مكتمل"])
+                
+                st.text_area("المدخلات (تم استخراجها)", value=inputs_text, height=100)
+                st.text_area("المخرجات (تم استخراجها)", value=outputs_text, height=100)
+                
+                # عرض الجدوال المستخرجة
+                if extracted_data:
+                    st.markdown("**البيانات المستخرجة من الجداول:**")
+                    df_extracted = pd.DataFrame(list(extracted_data.items()), columns=["الحقل", "القيمة"])
+                    st.dataframe(df_extracted, use_container_width=True)
+                
+                if st.form_submit_button("💾 استيراد العملية"):
+                    if final_name:
+                        add_process_to_db(final_name, final_category, final_freq, final_status)
+                        st.success(f"تم استيراد العملية: {final_name}")
+                        st.info("يمكنك الآن إضافة الخطوات يدوياً من صفحة 'إضافة خطوات'.")
+                        st.rerun()
+                    else:
+                        st.error("الرجاء إدخال اسم العملية")
+            
+            # عرض النص الكامل للملف
+            with st.expander("📝 عرض النص الكامل للملف"):
+                st.text_area("النص المستخرج", all_text, height=300)
+                
+        except ImportError:
+            st.error("⚠️ مكتبة python-docx غير مثبتة. أضفها إلى requirements.txt.")
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
 # ================== دليل الاستخدام ==================
 elif menu == "دليل الاستخدام":
     st.subheader("دليل استخدام نظام اعادة هندسة العمليات")
