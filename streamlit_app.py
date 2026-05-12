@@ -489,7 +489,7 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-# ================== لوحة التحكم المتطورة (مصححة) ==================
+# ================== لوحة القيادة (النهائية مع وقت الانتظار) ==================
 elif menu == "لوحة التحكم":
     st.subheader("📊 لوحة القيادة (Executive Dashboard)")
     st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
@@ -510,7 +510,6 @@ elif menu == "لوحة التحكم":
                 proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
                 total_waste_minutes += wait
                 total_processing_minutes += proc_time
-                # حساب التكلفة الشاملة (تقديرية)
                 total_annual_cost_comprehensive += (proc_time + wait) * 0.1 * p.annual_frequency
 
         avg_flow_eff = (total_processing_minutes / (total_processing_minutes + total_waste_minutes) * 100) if (total_processing_minutes + total_waste_minutes) > 0 else 0
@@ -519,12 +518,12 @@ elif menu == "لوحة التحكم":
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("📋 إجمالي العمليات", total_processes)
         col2.metric("⚡ متوسط كفاءة التدفق", f"{avg_flow_eff:.1f}%")
-        col3.metric("⏳ إجمالي وقت الهدر (دقيقة)", f"{total_waste_minutes:,.0f}")
-        col4.metric("💸 إجمالي التكلفة الشاملة (سنوياً)", f"{total_annual_cost_comprehensive:,.2f} د.أ")
+        col3.metric("⏳ إجمالي وقت الهدر", f"{total_waste_minutes:,.0f} دقيقة")
+        col4.metric("💸 إجمالي التكلفة الشاملة", f"{total_annual_cost_comprehensive:,.2f} د.أ")
 
         st.markdown("---")
 
-        # --- 2. جدول ملخص العمليات ---
+        # --- 2. جدول ملخص العمليات مع وقت الانتظار ---
         st.subheader("📋 ملخص جميع العمليات")
         summary_data = []
         for proc in all_processes:
@@ -542,6 +541,7 @@ elif menu == "لوحة التحكم":
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
+                # تقييم الحالة
                 if flow_eff < 5:
                     status = "🔴 خطر"
                 elif flow_eff < 20:
@@ -554,9 +554,10 @@ elif menu == "لوحة التحكم":
             summary_data.append({
                 "العملية": p.name,
                 "الفئة": p.category,
-                "كفاءة التدفق": f"{flow_eff:.1f}%",
-                "زمن الدورة (ساعة)": f"{lead_time/60:.1f}",
-                "التكلفة السنوية (د.أ)": f"{annual_cost_val:,.2f}",
+                "⏳ وقت الانتظار (دقيقة)": f"{wait:,.0f}",
+                "⚡ كفاءة التدفق": f"{flow_eff:.1f}%",
+                "🕐 زمن الدورة (ساعة)": f"{lead_time/60:.1f}",
+                "💸 التكلفة السنوية (د.أ)": f"{annual_cost_val:,.2f}",
                 "الحالة": status
             })
         
@@ -577,12 +578,11 @@ elif menu == "لوحة التحكم":
         df_pareto = pd.DataFrame(pareto_data).sort_values(by="waste", ascending=False).head(3)
         
         if not df_pareto.empty:
-            col1, col2, col3 = st.columns(3)
-            cols = [col1, col2, col3]
+            cols = st.columns(3)
             for i, (_, row) in enumerate(df_pareto.iterrows()):
                 with cols[i]:
                     st.error(f"**#{i+1}: {row['name']}**")
-                    st.metric("وقت الهدر (دقيقة)", f"{row['waste']:,.0f}")
+                    st.metric("⏳ وقت الهدر", f"{row['waste']:,.0f} دقيقة")
                     st.caption("ابدأ بتحسين هذه العملية فوراً.")
 
     else:
