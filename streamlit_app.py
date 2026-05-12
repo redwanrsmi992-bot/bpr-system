@@ -545,14 +545,14 @@ elif menu == "لوحة التحكم":
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
                 # تقييم الحالة
-                               if flow_eff < 5:
-                    status = "🔴 خطر"
+                             if flow_eff < 5:
+                    status = "[خطر]"
                 elif flow_eff < 20:
-                    status = "🟠 سيء"
+                    status = "[سيء]"
                 elif flow_eff < 40:
-                    status = "🟡 مقبول"
+                    status = "[مقبول]"
                 else:
-                    status = "🟢 جيد"
+                    status = "[جيد]"
 
             summary_data.append({
                 "العملية": p.name,
@@ -1085,15 +1085,14 @@ elif menu == "🗺️ الخريطة الحرارية":
                 flow_eff = (total_processing / lead_time * 100) if lead_time > 0 else 100
                 annual_cost = p.annual_cost
 
-            # تحديد مستوى الخطر
-                           if flow_eff < 5:
-                    status = "🔴 خطر"
+                        if flow_eff < 5:
+                    status = "[خطر]"
                 elif flow_eff < 20:
-                    status = "🟠 سيء"
+                    status = "[سيء]"
                 elif flow_eff < 40:
-                    status = "🟡 مقبول"
+                    status = "[مقبول]"
                 else:
-                    status = "🟢 جيد"
+                    status = "[جيد]"
 
             heatmap_data.append({
                 "العملية": p.name,
