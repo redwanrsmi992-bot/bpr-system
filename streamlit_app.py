@@ -1071,7 +1071,7 @@ elif menu == "🚀 توصيات التحسين":
             st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
-        # ================== مخطط BPMN ==================
+ # ================== مخطط BPMN (محسن) ==================
 elif menu == "📊 مخطط BPMN":
     st.subheader("📊 مخطط مسار العمل (BPMN)")
     st.markdown("رسم تخطيطي احترافي لسير العملية يوضح تسلسل الخطوات والمسؤولين.")
@@ -1088,19 +1088,17 @@ elif menu == "📊 مخطط BPMN":
             import plotly.graph_objects as go
 
             # تجهيز البيانات
-            step_labels = []
+            step_names = []
             step_colors = []
-            step_times = []
-            step_employees = []
+            step_details = []
             
             for s in steps:
                 with app.app_context():
                     emp = Employee.query.get(s.employee_id)
                     emp_title = emp.title if emp else "غير محدد"
                 
-                label = f"{s.step_order}. {s.step_name}<br>👤 {emp_title}"
-                step_labels.append(label)
-                step_employees.append(emp_title)
+                step_names.append(s.step_name)
+                step_details.append(f"👤 {emp_title} | عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د")
                 
                 if s.step_type == 'VA':
                     step_colors.append('#2ecc71')
@@ -1108,62 +1106,79 @@ elif menu == "📊 مخطط BPMN":
                     step_colors.append('#f39c12')
                 else:
                     step_colors.append('#e74c3c')
-                
-                step_times.append(f"عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د")
 
             # إضافة البداية والنهاية
-            all_labels = ["🚀 بداية"] + step_labels + ["🏁 نهاية"]
-            all_colors = ['#3498db'] + step_colors + ['#3498db']
+            all_names = ["🚀 بداية"] + step_names + ["🏁 نهاية"]
+            all_colors = ['#3498db'] + step_colors + ['#e74c3c']
+            all_details = ["", ""] + step_details + ["", ""]  # فارغ للبداية والنهاية
             
-            # إنشاء المخطط
+            # إنشاء مخطط أفقي
             fig = go.Figure()
 
-            # إضافة العقد (Nodes)
-            y_positions = list(range(len(all_labels), 0, -1))
-            
+            x_positions = list(range(len(all_names)))
+            y_positions = [0] * len(all_names)
+
+            # إضافة العقد كمربعات
             fig.add_trace(go.Scatter(
-                x=[1] * len(all_labels),
+                x=x_positions,
                 y=y_positions,
                 mode='markers+text',
-                marker=dict(size=40, color=all_colors, symbol='square', line=dict(color='white', width=2)),
-                text=[l.split('<br>')[0] for l in all_labels],
+                marker=dict(
+                    size=60, 
+                    color=all_colors, 
+                    symbol='square', 
+                    line=dict(color='white', width=3)
+                ),
+                text=all_names,
                 textposition='middle center',
-                textfont=dict(color='white', size=10),
-                hovertext=all_labels,
-                hoverinfo='text',
+                textfont=dict(color='white', size=11, family='Arial'),
                 name=''
             ))
 
-            # إضافة الأسهم (Edges)
-            for i in range(len(all_labels) - 1):
+            # إضافة الأسهم بين العقد
+            for i in range(len(all_names) - 1):
                 fig.add_annotation(
-                    x=1, y=y_positions[i] - 0.4,
-                    ax=1, ay=y_positions[i+1] + 0.4,
+                    x=x_positions[i] + 0.5,
+                    y=0,
+                    ax=x_positions[i+1] - 0.5,
+                    ay=0,
                     xref='x', yref='y',
                     axref='x', ayref='y',
                     showarrow=True,
                     arrowhead=2,
-                    arrowsize=1.5,
-                    arrowwidth=2,
+                    arrowsize=2,
+                    arrowwidth=3,
                     arrowcolor='#7f8c8d'
                 )
 
-            # إضافة معلومات الوقت بجانب كل عقدة
-            for i, (label, time, emp) in enumerate(zip(step_labels, step_times, step_employees)):
-                fig.add_annotation(
-                    x=1.3, y=y_positions[i+1],
-                    text=f"{time}<br>👤 {emp}",
-                    showarrow=False,
-                    font=dict(size=9, color='#555'),
-                    align='left'
-                )
+            # إضافة تفاصيل كل خطوة أسفل العقدة
+            for i, (name, detail) in enumerate(zip(all_names, all_details)):
+                if detail:
+                    fig.add_annotation(
+                        x=x_positions[i],
+                        y=-0.4,
+                        text=detail,
+                        showarrow=False,
+                        font=dict(size=8, color='#333'),
+                        align='center'
+                    )
 
             fig.update_layout(
-                title=f"مخطط سير العملية: {process.name}",
+                title=dict(text=f"مخطط سير العملية: {process.name}", font=dict(size=18)),
                 showlegend=False,
-                height=200 + len(steps) * 120,
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.5, 2]),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                height=350,
+                xaxis=dict(
+                    showgrid=False, 
+                    zeroline=False, 
+                    showticklabels=False,
+                    range=[min(x_positions)-1, max(x_positions)+1]
+                ),
+                yaxis=dict(
+                    showgrid=False, 
+                    zeroline=False, 
+                    showticklabels=False,
+                    range=[-1, 0.5]
+                ),
                 plot_bgcolor='white'
             )
 
