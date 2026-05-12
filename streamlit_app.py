@@ -188,6 +188,65 @@ if menu == "الرئيسية":
                                 st.rerun()
     else:
         st.info("لا توجد عمليات بعد")
+                # ---- استيراد وتصدير ----
+        with st.expander("💾 حفظ واستعادة البيانات", expanded=False):
+            st.markdown("لتجنب فقدان البيانات، حمّل نسخة احتياطية قبل اعادة النشر.")
+            col_backup, col_restore = st.columns(2)
+            
+            with col_backup:
+                if st.button("📥 تحميل نسخة احتياطية (Excel)"):
+                    with app.app_context():
+                        emp_data = [{"id": e.id, "title": e.title, "cost": e.monthly_cost} for e in Employee.query.all()]
+                        proc_data = [{"id": p.id, "name": p.name, "category": p.category, "freq": p.annual_frequency, "status": p.status} for p in Process.query.all()]
+                        step_data = [{"id": s.id, "process_id": s.process_id, "employee_id": s.employee_id, "order": s.step_order, "name": s.step_name, "pt": s.processing_time_minutes, "wt": s.wait_time_minutes, "type": s.step_type, "system": s.system_used, "waste": s.waste_category} for s in Step.query.all()]
+                        
+                        df_emp = pd.DataFrame(emp_data) if emp_data else pd.DataFrame()
+                        df_proc = pd.DataFrame(proc_data) if proc_data else pd.DataFrame()
+                        df_step = pd.DataFrame(step_data) if step_data else pd.DataFrame()
+                        
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            if not df_emp.empty: df_emp.to_excel(writer, sheet_name='employees', index=False)
+                            if not df_proc.empty: df_proc.to_excel(writer, sheet_name='processes', index=False)
+                            if not df_step.empty: df_step.to_excel(writer, sheet_name='steps', index=False)
+                        output.seek(0)
+                        
+                        st.download_button("⬇️ تحميل النسخة الاحتياطية", data=output, file_name="bpr_backup.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            
+            with col_restore:
+                uploaded_backup = st.file_uploader("📤 استعادة من نسخة احتياطية", type="xlsx", key="restore")
+                if uploaded_backup is not None:
+                    if st.button("🔄 استعادة البيانات"):
+                        try:
+                            with app.app_context():
+                                xl = pd.ExcelFile(uploaded_backup)
+                                
+                                if 'employees' in xl.sheet_names:
+                                    df_e = pd.read_excel(uploaded_backup, sheet_name='employees')
+                                    for _, row in df_e.iterrows():
+                                        if not Employee.query.get(row['id']):
+                                            emp = Employee(id=row['id'], title=row['title'], monthly_cost=row['cost'])
+                                            db.session.add(emp)
+                                
+                                if 'processes' in xl.sheet_names:
+                                    df_p = pd.read_excel(uploaded_backup, sheet_name='processes')
+                                    for _, row in df_p.iterrows():
+                                        if not Process.query.get(row['id']):
+                                            proc = Process(id=row['id'], name=row['name'], category=row['category'], annual_frequency=row['freq'], status=row['status'])
+                                            db.session.add(proc)
+                                
+                                if 'steps' in xl.sheet_names:
+                                    df_s = pd.read_excel(uploaded_backup, sheet_name='steps')
+                                    for _, row in df_s.iterrows():
+                                        if not Step.query.get(row['id']):
+                                            step = Step(id=row['id'], process_id=row['process_id'], employee_id=row['employee_id'], step_order=row['order'], step_name=row['name'], processing_time_minutes=row['pt'], wait_time_minutes=row['wt'], step_type=row['type'], system_used=row['system'], waste_category=row['waste'])
+                                            db.session.add(step)
+                                
+                                db.session.commit()
+                                st.success("تم استعادة جميع البيانات بنجاح!")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"فشل الاستيراد: {e}")
 
 # ================== اضافة موظف ==================
 elif menu == "اضافة موظف":
