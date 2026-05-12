@@ -251,12 +251,12 @@ elif menu == "اضافة عملية":
             else:
                 st.error("الرجاء ادخال اسم العملية")
 
-# ================== اضافة خطوات (مع تعديل وحذف) ==================
+# ================== اضافة خطوات (آمن) ==================
 elif menu == "اضافة خطوات":
     st.subheader("ادارة الخطوات")
-    
+
     tab1, tab2 = st.tabs(["➕ اضافة خطوة", "📋 عرض وتعديل الخطوات"])
-    
+
     # ---- تبويبة الاضافة ----
     with tab1:
         processes = get_processes()
@@ -268,7 +268,9 @@ elif menu == "اضافة خطوات":
         else:
             pnames = [f"{p.id} - {p.name}" for p in processes]
             enames = [f"{e.id} - {e.title}" for e in employees]
-            with st.form("add_step"):
+            
+            # النموذج الأساسي (Form)
+            with st.form("add_step_form"):
                 pid_sel = st.selectbox("اختر العملية", pnames)
                 eid_sel = st.selectbox("اختر الموظف", enames)
                 order = st.number_input("رقم الترتيب", min_value=1, value=1)
@@ -278,58 +280,33 @@ elif menu == "اضافة خطوات":
                 stype = st.selectbox("نوع الخطوة", ["VA", "BNVA", "NVA"])
                 system = st.selectbox("النظام المستخدم", ["Oracle", "GFMIS", "Outlook", "ورقي", "يدوي"])
                 waste = st.text_input("فئة الهدر (ان وجدت)")
-                            # مساعد تحليل نوع الخطوة
-            with st.expander("💡 تحليل نوع الخطوة (مساعد)"):
-                if st.button("حلل هذه الخطوة", key="analyze_step"):
-                    name_lower = sname.lower() if sname else ""
-                    waste_lower = waste.lower() if waste else ""
-                    
-                    # كلمات مفتاحية للتحليل
-                    wait_keywords = ["انتظار", "توقيع", "اعتماد", "مراجعة", "انتظر"]
-                    rework_keywords = ["تصحيح", "إعادة", "خطأ", "تعديل"]
-                    system_keywords = ["نظام", "أدخل", "سجل", "أرشفة", "gfm", "oracle", "outlook"]
-                    value_keywords = ["تسجيل", "طلب", "دفع", "اصدار", "تحويل", "تنفيذ", "صرف"]
-                    
-                    # المنطق التحليلي
-                    is_wait = any(kw in name_lower for kw in wait_keywords) and (waste_lower == "انتظار" or waste_lower == "")
-                    is_rework = any(kw in name_lower for kw in rework_keywords)
-                    is_system = any(kw in name_lower for kw in system_keywords)
-                    is_value = any(kw in name_lower for kw in value_keywords)
-                    
-                    if is_wait or waste_lower == "انتظار":
-                        suggested_type = "NVA"
-                        reason = "العميل لا يدفع مقابل الانتظار. هذه الخطوة لا تغير المعاملة، بل توقفها."
-                        advice = "🚀 حاول إلغاء وقت الانتظار هذا عبر التوقيع الإلكتروني."
-                    elif is_rework:
-                        suggested_type = "NVA"
-                        reason = "إعادة العمل أو تصحيح الأخطاء لا يضيف قيمة. إنه هدر ناتج عن خلل سابق."
-                        advice = "🔧 عالج سبب الخطأ بدلاً من تصحيحه. هذه الخطوة يجب أن تختفي."
-                    elif is_value and not is_wait:
-                        suggested_type = "VA"
-                        reason = "العميل يهتم بهذه الخطوة. إنها تغير المعاملة وتضيف قيمة مباشرة."
-                        advice = "✅ حافظ على هذه الخطوة وحاول تحسين وقتها فقط."
-                    elif is_system:
-                        suggested_type = "BNVA"
-                        reason = "هذه الخطوة ضرورية للنظام أو القانون، لكن العميل لا يراها ولا يدفع مقابلها."
-                        advice = "⚙️ حاول أتمتتها بالكامل لتقليل وقتها."
-                    else:
-                        suggested_type = "BNVA"
-                        reason = "تبدو كخطوة إدارية ضرورية، لكنها لا تضيف قيمة مباشرة للعميل."
-                        advice = "📋 راجع إذا كان يمكن دمجها أو أتمتتها."
-                    
-                    # عرض النتيجة
-                    color = {"VA": "green", "BNVA": "orange", "NVA": "red"}
-                    st.markdown(f"### النوع المقترح: :{color[suggested_type]}[{suggested_type}]")
-                    st.markdown(f"**لماذا؟** {reason}")
-                    st.markdown(f"**التوصية:** {advice}")
-                    st.info("هذا تحليل مساعد. يمكنك تعديل التصنيف يدوياً حسب معرفتك الدقيقة بالعملية.")
+                
+                # زر الحفظ (داخل النموذج)
                 if st.form_submit_button("💾 حفظ الخطوة"):
-                    pid = int(pid_sel.split(" - ")[0])
-                    eid = int(eid_sel.split(" - ")[0])
-                    add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
-                    st.success("تمت اضافة الخطوة")
-                    st.rerun()
-    
+                    if sname:
+                        pid = int(pid_sel.split(" - ")[0])
+                        eid = int(eid_sel.split(" - ")[0])
+                        add_step_to_db(pid, eid, order, sname, pt, wt, stype, system, waste)
+                        st.success("تمت اضافة الخطوة")
+                        st.rerun()
+                    else:
+                        st.error("الرجاء ادخال اسم الخطوة")
+            
+            # المساعد (خارج النموذج
+            with st.expander("💡 تحليل نوع الخطوة (مساعد)"):
+                if sname:
+                    st.markdown("""
+                    **دليل سريع للتصنيف:**
+                    - **VA (قيمة مضافة):** العميل يدفع مقابل هذه الخطوة (مثلاً: تسجيل طلب، إصدار أمر دفع).
+                    - **BNVA (هدر ضروري):** إجراء رقابي أو قانوني (مثلاً: تدقيق الرصيد، مراجعة مدير).
+                    - **NVA (هدر خالص):** انتظار، إعادة عمل، موافقات زائدة.
+                    
+                    **اسأل نفسك:** "لو كنت المواطن، هل سأدفع مقابل هذه الخطوة؟"
+                    - إذا كان الجواب **نعم** → VA
+                    - إذا كان الجواب **لا، لكنها إجبارية** → BNVA
+                    - إذا كان الجواب **لا، ويمكن الاستغناء عنها** → NVA
+                    """)
+
     # ---- تبويبة العرض والتعديل ----
     with tab2:
         processes = get_processes()
@@ -356,6 +333,7 @@ elif menu == "اضافة خطوات":
                             - **الهدر:** {s.waste_category or '-'}
                             """)
                         with col_actions:
+                            # تعديل وحذف (خارج form)
                             if st.button("✏️ تعديل", key=f"edit_step_{s.id}"):
                                 st.session_state[f"editing_step_{s.id}"] = True
                             if st.button("🗑️ حذف", key=f"del_step_{s.id}"):
@@ -407,7 +385,6 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-
 # ================== لوحة التحكم ==================
 elif menu == "لوحة التحكم":
     st.subheader("لوحة التحكم")
