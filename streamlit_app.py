@@ -142,6 +142,7 @@ menu = st.sidebar.radio("القائمة", [
     "📊 RACI",
     "🗺️ الخريطة الحرارية",
     "🚀 توصيات التحسين",
+    "📊 مخطط BPMN",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -1066,6 +1067,114 @@ elif menu == "🚀 توصيات التحسين":
                     - وفر سنوي: {saving:,.2f} د.أ
                     - تحسين الكفاءة: +{target_eff - current_eff:.1f}%
                     """)
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== مخطط BPMN ==================
+elif menu == "📊 مخطط BPMN":
+    st.subheader("📊 مخطط مسار العمل (BPMN)")
+    st.markdown("رسم تخطيطي احترافي لسير العملية يوضح تسلسل الخطوات والمسؤولين.")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية لرسم مخططها", pnames)
+        pid = int(sel.split(" - ")[0])
+        steps = get_steps(pid)
+        process = get_process_by_id(pid)
+
+        if process and steps:
+            import plotly.graph_objects as go
+
+            # تجهيز البيانات
+            step_labels = []
+            step_colors = []
+            step_times = []
+            step_employees = []
+            
+            for s in steps:
+                with app.app_context():
+                    emp = Employee.query.get(s.employee_id)
+                    emp_title = emp.title if emp else "غير محدد"
+                
+                label = f"{s.step_order}. {s.step_name}<br>👤 {emp_title}"
+                step_labels.append(label)
+                step_employees.append(emp_title)
+                
+                if s.step_type == 'VA':
+                    step_colors.append('#2ecc71')
+                elif s.step_type == 'BNVA':
+                    step_colors.append('#f39c12')
+                else:
+                    step_colors.append('#e74c3c')
+                
+                step_times.append(f"عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د")
+
+            # إضافة البداية والنهاية
+            all_labels = ["🚀 بداية"] + step_labels + ["🏁 نهاية"]
+            all_colors = ['#3498db'] + step_colors + ['#3498db']
+            
+            # إنشاء المخطط
+            fig = go.Figure()
+
+            # إضافة العقد (Nodes)
+            y_positions = list(range(len(all_labels), 0, -1))
+            
+            fig.add_trace(go.Scatter(
+                x=[1] * len(all_labels),
+                y=y_positions,
+                mode='markers+text',
+                marker=dict(size=40, color=all_colors, symbol='square', line=dict(color='white', width=2)),
+                text=[l.split('<br>')[0] for l in all_labels],
+                textposition='middle center',
+                textfont=dict(color='white', size=10),
+                hovertext=all_labels,
+                hoverinfo='text',
+                name=''
+            ))
+
+            # إضافة الأسهم (Edges)
+            for i in range(len(all_labels) - 1):
+                fig.add_annotation(
+                    x=1, y=y_positions[i] - 0.4,
+                    ax=1, ay=y_positions[i+1] + 0.4,
+                    xref='x', yref='y',
+                    axref='x', ayref='y',
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1.5,
+                    arrowwidth=2,
+                    arrowcolor='#7f8c8d'
+                )
+
+            # إضافة معلومات الوقت بجانب كل عقدة
+            for i, (label, time, emp) in enumerate(zip(step_labels, step_times, step_employees)):
+                fig.add_annotation(
+                    x=1.3, y=y_positions[i+1],
+                    text=f"{time}<br>👤 {emp}",
+                    showarrow=False,
+                    font=dict(size=9, color='#555'),
+                    align='left'
+                )
+
+            fig.update_layout(
+                title=f"مخطط سير العملية: {process.name}",
+                showlegend=False,
+                height=200 + len(steps) * 120,
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0.5, 2]),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                plot_bgcolor='white'
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # وسيلة الإيضاح
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            col1.markdown("🟢 **VA (قيمة مضافة):** العميل يدفع مقابلها.")
+            col2.markdown("🟠 **BNVA (ضرورية):** إجراء قانوني / رقابي.")
+            col3.markdown("🔴 **NVA (هدر):** يمكن ويجب إلغاؤها فوراً.")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
