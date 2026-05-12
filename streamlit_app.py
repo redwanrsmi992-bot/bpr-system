@@ -489,7 +489,7 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-# ================== لوحة التحكم المتطورة ==================
+# ================== لوحة التحكم المتطورة (مصححة) ==================
 elif menu == "لوحة التحكم":
     st.subheader("📊 لوحة القيادة (Executive Dashboard)")
     st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
@@ -511,8 +511,7 @@ elif menu == "لوحة التحكم":
                 total_waste_minutes += wait
                 total_processing_minutes += proc_time
                 # حساب التكلفة الشاملة (تقديرية)
-                cost_per_min = 0.1  # يمكن تعديلها
-                total_annual_cost_comprehensive += (proc_time + wait) * cost_per_min * p.annual_frequency
+                total_annual_cost_comprehensive += (proc_time + wait) * 0.1 * p.annual_frequency
 
         avg_flow_eff = (total_processing_minutes / (total_processing_minutes + total_waste_minutes) * 100) if (total_processing_minutes + total_waste_minutes) > 0 else 0
         
@@ -536,6 +535,13 @@ elif menu == "لوحة التحكم":
                 lead_time = proc_time + wait
                 flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
                 
+                # حساب التكلفة يدوياً
+                total_cost_val = 0
+                for s in p.steps:
+                    if s.employee and s.processing_time_minutes:
+                        total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
+                annual_cost_val = total_cost_val * p.annual_frequency
+                
                 if flow_eff < 5:
                     status = "🔴 خطر"
                 elif flow_eff < 20:
@@ -550,7 +556,7 @@ elif menu == "لوحة التحكم":
                 "الفئة": p.category,
                 "كفاءة التدفق": f"{flow_eff:.1f}%",
                 "زمن الدورة (ساعة)": f"{lead_time/60:.1f}",
-                "التكلفة السنوية (د.أ)": f"{p.annual_cost:,.2f}",
+                "التكلفة السنوية (د.أ)": f"{annual_cost_val:,.2f}",
                 "الحالة": status
             })
         
