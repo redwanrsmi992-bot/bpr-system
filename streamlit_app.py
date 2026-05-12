@@ -1065,36 +1065,33 @@ elif menu == "📊 RACI":
      # ================== الخريطة الحرارية ==================
 elif menu == "🗺️ الخريطة الحرارية":
     st.subheader("🗺️ الخريطة الحرارية للعمليات")
-    st.markdown("نظرة شاملة على صحة جميع العمليات. ركز على العمليات الحمراء أولاً.")
-    all_processes = get_processes()
-    if all_processes:
-        heatmap_data = []
-        for proc in all_processes:
-            with app.app_context():
-                p = Process.query.get(proc.id)
-                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
-                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
-                lead_time = proc_time + wait
-                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
-                annual_cost = p.annual_cost
-            heatmap_data.append({
-                "العملية": p.name,
-                "الفئة": p.category,
-                "كفاءة التدفق %": f"{flow_eff:.1f}%",
-                "زمن الدورة (ساعة)": round(lead_time / 60, 1),
-                "وقت الانتظار (ساعة)": round(wait / 60, 1),
-                "التكلفة الشاملة (د.أ)": round(annual_cost + (wait * 0.1), 0)
-            })
-        df_heatmap = pd.DataFrame(heatmap_data)
-        st.dataframe(df_heatmap, use_container_width=True)
-        st.markdown("---")
-        st.markdown("### 🎯 أولويات التحسين")
-        st.markdown("- **خطر:** ابدأ بهذه العمليات فوراً")
-        st.markdown("- **سيء:** خطط لتحسينها هذا الشهر")
-        st.markdown("- **مقبول:** جدولها للربع القادم")
-        st.markdown("- **جيد:** راقبها وحافظ على أدائها")
+    st.markdown("نظرة شاملة على صحة جميع العمليات. اضغط الزر لبدء التحليل.")
+
+    if st.button("🔄 بدء تحليل ومقارنة العمليات", use_container_width=True):
+        all_processes = get_processes()
+        if all_processes:
+            heatmap_data = []
+            for proc in all_processes:
+                with app.app_context():
+                    p = Process.query.get(proc.id)
+                    wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                    proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                    lead_time = proc_time + wait
+                    flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+                    annual_cost = p.annual_cost
+                heatmap_data.append({
+                    "العملية": p.name,
+                    "الفئة": p.category,
+                    "كفاءة التدفق %": f"{flow_eff:.1f}%",
+                    "زمن الدورة (ساعة)": round(lead_time / 60, 1),
+                    "وقت الانتظار (ساعة)": round(wait / 60, 1)
+                })
+            df_heatmap = pd.DataFrame(heatmap_data)
+            st.dataframe(df_heatmap, use_container_width=True)
+        else:
+            st.info("لا توجد عمليات بعد.")
     else:
-        st.info("لا توجد عمليات بعد.")
+        st.info("💡 اضغط على الزر أعلاه لبدء تحليل ومقارنة جميع العمليات.")
         # ================== توصيات التحسين ==================
 elif menu == "🚀 توصيات التحسين":
     st.subheader("🚀 توصيات التحسين (To-Be)")
