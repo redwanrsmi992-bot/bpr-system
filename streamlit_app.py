@@ -1071,10 +1071,10 @@ elif menu == "🚀 توصيات التحسين":
             st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
- # ================== مخطط BPMN (محسن) ==================
+# ================== مخطط BPMN (مبسط وواضح) ==================
 elif menu == "📊 مخطط BPMN":
     st.subheader("📊 مخطط مسار العمل (BPMN)")
-    st.markdown("رسم تخطيطي احترافي لسير العملية يوضح تسلسل الخطوات والمسؤولين.")
+    st.markdown("رسم تخطيطي مبسط لسير العملية.")
 
     processes = get_processes()
     if processes:
@@ -1085,111 +1085,50 @@ elif menu == "📊 مخطط BPMN":
         process = get_process_by_id(pid)
 
         if process and steps:
-            import plotly.graph_objects as go
-
-            # تجهيز البيانات
-            step_names = []
-            step_colors = []
-            step_details = []
+            # عرض مبسط كجدول ملون بدلاً من رسم معقد
+            st.markdown("---")
+            st.markdown(f"### 📋 مخطط: {process.name}")
             
-            for s in steps:
+            for i, s in enumerate(steps):
                 with app.app_context():
                     emp = Employee.query.get(s.employee_id)
-                    emp_title = emp.title if emp else "غير محدد"
+                    emp_title = emp.title if emp else "-"
                 
-                step_names.append(s.step_name)
-                step_details.append(f"👤 {emp_title} | عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د")
-                
+                # تحديد اللون
                 if s.step_type == 'VA':
-                    step_colors.append('#2ecc71')
+                    color = '#2ecc71'
+                    emoji = '✅'
                 elif s.step_type == 'BNVA':
-                    step_colors.append('#f39c12')
+                    color = '#f39c12'
+                    emoji = '⚠️'
                 else:
-                    step_colors.append('#e74c3c')
-
-            # إضافة البداية والنهاية
-            all_names = ["🚀 بداية"] + step_names + ["🏁 نهاية"]
-            all_colors = ['#3498db'] + step_colors + ['#e74c3c']
-            all_details = ["", ""] + step_details + ["", ""]  # فارغ للبداية والنهاية
+                    color = '#e74c3c'
+                    emoji = '❌'
+                
+                # عرض الخطوة كبطاقة ملونة
+                st.markdown(f"""
+                <div style="
+                    border-left: 5px solid {color};
+                    background-color: {color}15;
+                    padding: 10px;
+                    margin: 5px 0;
+                    border-radius: 5px;
+                ">
+                    <b>{emoji} {s.step_order}. {s.step_name}</b> ({s.step_type})<br>
+                    <small>👤 {emp_title} | ⏱️ عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د</small>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # سهم بين الخطوات
+                if i < len(steps) - 1:
+                    st.markdown("<div style='text-align:center; color:#7f8c8d;'>⬇️</div>", unsafe_allow_html=True)
             
-            # إنشاء مخطط أفقي
-            fig = go.Figure()
-
-            x_positions = list(range(len(all_names)))
-            y_positions = [0] * len(all_names)
-
-            # إضافة العقد كمربعات
-            fig.add_trace(go.Scatter(
-                x=x_positions,
-                y=y_positions,
-                mode='markers+text',
-                marker=dict(
-                    size=60, 
-                    color=all_colors, 
-                    symbol='square', 
-                    line=dict(color='white', width=3)
-                ),
-                text=all_names,
-                textposition='middle center',
-                textfont=dict(color='white', size=11, family='Arial'),
-                name=''
-            ))
-
-            # إضافة الأسهم بين العقد
-            for i in range(len(all_names) - 1):
-                fig.add_annotation(
-                    x=x_positions[i] + 0.5,
-                    y=0,
-                    ax=x_positions[i+1] - 0.5,
-                    ay=0,
-                    xref='x', yref='y',
-                    axref='x', ayref='y',
-                    showarrow=True,
-                    arrowhead=2,
-                    arrowsize=2,
-                    arrowwidth=3,
-                    arrowcolor='#7f8c8d'
-                )
-
-            # إضافة تفاصيل كل خطوة أسفل العقدة
-            for i, (name, detail) in enumerate(zip(all_names, all_details)):
-                if detail:
-                    fig.add_annotation(
-                        x=x_positions[i],
-                        y=-0.4,
-                        text=detail,
-                        showarrow=False,
-                        font=dict(size=8, color='#333'),
-                        align='center'
-                    )
-
-            fig.update_layout(
-                title=dict(text=f"مخطط سير العملية: {process.name}", font=dict(size=18)),
-                showlegend=False,
-                height=350,
-                xaxis=dict(
-                    showgrid=False, 
-                    zeroline=False, 
-                    showticklabels=False,
-                    range=[min(x_positions)-1, max(x_positions)+1]
-                ),
-                yaxis=dict(
-                    showgrid=False, 
-                    zeroline=False, 
-                    showticklabels=False,
-                    range=[-1, 0.5]
-                ),
-                plot_bgcolor='white'
-            )
-
-            st.plotly_chart(fig, use_container_width=True)
-
             # وسيلة الإيضاح
             st.markdown("---")
             col1, col2, col3 = st.columns(3)
-            col1.markdown("🟢 **VA (قيمة مضافة):** العميل يدفع مقابلها.")
-            col2.markdown("🟠 **BNVA (ضرورية):** إجراء قانوني / رقابي.")
-            col3.markdown("🔴 **NVA (هدر):** يمكن ويجب إلغاؤها فوراً.")
+            col1.markdown("🟢 **VA:** قيمة مضافة")
+            col2.markdown("🟠 **BNVA:** ضرورية")
+            col3.markdown("🔴 **NVA:** هدر")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
