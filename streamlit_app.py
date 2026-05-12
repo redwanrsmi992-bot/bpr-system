@@ -233,6 +233,7 @@ menu = st.sidebar.radio("القائمة", [
     "🚀 توصيات التحسين",
     "📊 مخطط BPMN",
     "📄 تقرير العملية",
+    "📄 تقرير PDF",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -1406,6 +1407,164 @@ elif menu == "📄 تقرير العملية":
                 {chr(10).join(recommendations) if recommendations else "لا توجد توصيات حرجة."}
                 """
                 st.download_button("📥 تحميل التقرير (نص)", data=report_text, file_name=f"تقرير_{process.name}.txt", mime="text/plain")
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== تقرير PDF ==================
+elif menu == "📄 تقرير PDF":
+    st.subheader("📄 تصدير تقرير PDF احترافي")
+    st.markdown("اختر العملية وسيتم توليد ملف PDF جاهز للطباعة والعرض على الإدارة.")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية لتصدير تقرير PDF", pnames)
+        pid = int(sel.split(" - ")[0])
+        process = get_process_by_id(pid)
+        steps = get_steps(pid)
+
+        if process and steps:
+            with app.app_context():
+                p = Process.query.get(pid)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+
+                # حساب التكلفة
+                total_cost_val = 0
+                for s in p.steps:
+                    if s.employee and s.processing_time_minutes:
+                        total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
+                annual_cost_val = total_cost_val * p.annual_frequency
+
+            # زر توليد PDF
+            if st.button("📥 توليد وتحميل PDF", use_container_width=True):
+                try:
+                    from fpdf import FPDF
+
+                    pdf = FPDF(orientation='P', unit='mm', format='A4')
+                    pdf.add_page()
+                    
+                    # إضافة الخط العربي
+                    pdf.add_font('Tajawal', '', 'https://fonts.gstatic.com/s/tajawal/v9/pxiEyp8jdW7jE1IN4mM.ttf', uni=True)
+                    pdf.add_font('Tajawal', 'B', 'https://fonts.gstatic.com/s/tajawal/v9/pxiByp8jdW7jE1IN4m5zyVlv.ttf', uni=True)
+                    
+                    # العنوان الرئيسي
+                    pdf.set_font('Tajawal', 'B', 22)
+                    pdf.set_text_color(30, 41, 59)
+                    pdf.cell(0, 15, f"تقرير تحليل عملية: {process.name}", ln=True, align='C')
+                    pdf.ln(5)
+                    
+                    # خط فاصل
+                    pdf.set_draw_color(37, 99, 235)
+                    pdf.set_line_width(0.8)
+                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+                    pdf.ln(8)
+                    
+                    # --- قسم مؤشرات الأداء ---
+                    pdf.set_font('Tajawal', 'B', 16)
+                    pdf.set_text_color(37, 99, 235)
+                    pdf.cell(0, 10, "مؤشرات الأداء الرئيسية", ln=True, align='R')
+                    pdf.ln(3)
+                    
+                    pdf.set_font('Tajawal', '', 12)
+                    pdf.set_text_color(51, 51, 51)
+                    kpis = [
+                        f"كفاءة التدفق: {flow_eff:.1f}%",
+                        f"زمن الدورة: {lead_time/60:.1f} ساعة",
+                        f"وقت الانتظار: {wait/60:.1f} ساعة",
+                        f"التكلفة السنوية: {annual_cost_val:,.2f} د.أ"
+                    ]
+                    for kpi in kpis:
+                        pdf.cell(0, 8, kpi, ln=True, align='R')
+                    pdf.ln(5)
+                    
+                    # --- قسم SIPOC ---
+                    pdf.set_font('Tajawal', 'B', 16)
+                    pdf.set_text_color(37, 99, 235)
+                    pdf.cell(0, 10, "بطاقة تعريف العملية (SIPOC)", ln=True, align='R')
+                    pdf.ln(3)
+                    
+                    pdf.set_font('Tajawal', '', 11)
+                    pdf.set_text_color(51, 51, 51)
+                    sipoc_items = [
+                        "S - الموردون: جميع الجهات الحكومية",
+                        "I - المدخلات: طلب مكتمل، مستندات ثبوتية",
+                        f"P - العملية: {' -> '.join([s.step_name for s in steps])}",
+                        "O - المخرجات: معاملة منجزة، إشعار",
+                        "C - العملاء: المستفيد النهائي، جهة رقابية"
+                    ]
+                    for item in sipoc_items:
+                        pdf.cell(0, 7, item, ln=True, align='R')
+                    pdf.ln(5)
+                    
+                    # --- قسم الخطوات ---
+                    pdf.set_font('Tajawal', 'B', 16)
+                    pdf.set_text_color(37, 99, 235)
+                    pdf.cell(0, 10, f"خطوات العملية ({len(steps)} خطوة)", ln=True, align='R')
+                    pdf.ln(3)
+                    
+                    pdf.set_font('Tajawal', '', 10)
+                    for s in steps:
+                        with app.app_context():
+                            emp = Employee.query.get(s.employee_id)
+                            emp_title = emp.title if emp else "-"
+                        
+                        if s.step_type == 'VA':
+                            status_text = "VA (قيمة مضافة)"
+                        elif s.step_type == 'BNVA':
+                            status_text = "BNVA (ضرورية)"
+                        else:
+                            status_text = "NVA (هدر خالص)"
+                        
+                        step_text = f"{s.step_order}. {s.step_name} | {status_text} | {emp_title} | عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د"
+                        pdf.cell(0, 7, step_text, ln=True, align='R')
+                    pdf.ln(5)
+                    
+                    # --- قسم التوصيات ---
+                    pdf.set_font('Tajawal', 'B', 16)
+                    pdf.set_text_color(37, 99, 235)
+                    pdf.cell(0, 10, "توصيات التحسين", ln=True, align='R')
+                    pdf.ln(3)
+                    
+                    pdf.set_font('Tajawal', '', 11)
+                    pdf.set_text_color(51, 51, 51)
+                    recs = []
+                    for s in steps:
+                        if s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 1440:
+                            recs.append(f"• أتمتة '{s.step_name}': توفير {s.wait_time_minutes} دقيقة عبر التوقيع الإلكتروني.")
+                        elif s.system_used == 'ورقي':
+                            recs.append(f"• رقمنة '{s.step_name}': تحويلها إلى إلكترونية.")
+                    
+                    if recs:
+                        for r in recs:
+                            pdf.cell(0, 7, r, ln=True, align='R')
+                    else:
+                        pdf.cell(0, 7, "لا توجد توصيات حرجة.", ln=True, align='R')
+                    
+                    # --- تذييل ---
+                    pdf.ln(10)
+                    pdf.set_font('Tajawal', '', 9)
+                    pdf.set_text_color(128, 128, 128)
+                    pdf.cell(0, 5, "تم إنشاء هذا التقرير بواسطة نظام إعادة هندسة العمليات - دائرة الموازنة العامة", ln=True, align='C')
+                    
+                    # حفظ الملف
+                    pdf_output = pdf.output(dest='S').encode('latin-1')
+                    
+                    st.download_button(
+                        "⬇️ تحميل ملف PDF",
+                        data=pdf_output,
+                        file_name=f"تقرير_{process.name}.pdf",
+                        mime="application/pdf"
+                    )
+                    st.success("✅ تم توليد PDF بنجاح! اضغط على الزر أعلاه للتحميل.")
+                    
+                except ImportError:
+                    st.error("⚠️ مكتبة fpdf2 غير مثبتة. تأكد من إضافتها إلى requirements.txt.")
+                except Exception as e:
+                    st.error(f"حدث خطأ: {e}")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
