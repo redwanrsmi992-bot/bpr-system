@@ -232,6 +232,7 @@ menu = st.sidebar.radio("القائمة", [
     "🗺️ الخريطة الحرارية",
     "🚀 توصيات التحسين",
     "📊 مخطط BPMN",
+    "📄 تقرير العملية",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -1274,6 +1275,139 @@ elif menu == "📊 مخطط BPMN":
                     <small>يمكن ويجب إلغاؤها</small>
                 </div>
                 """, unsafe_allow_html=True)
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== تقرير العملية الشامل ==================
+elif menu == "📄 تقرير العملية":
+    st.subheader("📄 تقرير العملية الشامل")
+    st.markdown("بطاقة تقرير كاملة للعملية المختارة، جاهزة للطباعة أو الحفظ.")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية لإنشاء تقريرها", pnames)
+        pid = int(sel.split(" - ")[0])
+        process = get_process_by_id(pid)
+        steps = get_steps(pid)
+
+        if process and steps:
+            with app.app_context():
+                p = Process.query.get(pid)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+                
+                # حساب التكلفة
+                total_cost_val = 0
+                for s in p.steps:
+                    if s.employee and s.processing_time_minutes:
+                        total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
+                annual_cost_val = total_cost_val * p.annual_frequency
+                
+                # SIPOC تلقائي
+                suppliers = "جميع الجهات الحكومية"
+                inputs_list = "طلب مكتمل، مستندات ثبوتية"
+                process_desc = " → ".join([s.step_name for s in steps])
+                outputs_list = "معاملة منجزة، إشعار"
+                customers = "المستفيد النهائي، جهة رقابية"
+
+            # --- تجميع التقرير في بطاقة واحدة ---
+            with st.expander(f"📄 تقرير: {process.name}", expanded=True):
+                st.markdown(f"## 🏷️ بطاقة تعريف العملية (SIPOC)")
+                col_s, col_i = st.columns(2)
+                with col_s:
+                    st.markdown(f"**S - الموردون:** {suppliers}")
+                    st.markdown(f"**I - المدخلات:** {inputs_list}")
+                    st.markdown(f"**P - العملية:** {process_desc}")
+                with col_i:
+                    st.markdown(f"**O - المخرجات:** {outputs_list}")
+                    st.markdown(f"**C - العملاء:** {customers}")
+                
+                st.markdown("---")
+                st.markdown(f"## 📊 مؤشرات الأداء الرئيسية")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("كفاءة التدفق", f"{flow_eff:.1f}%")
+                col2.metric("زمن الدورة", f"{lead_time/60:.1f} ساعة")
+                col3.metric("وقت الانتظار", f"{wait/60:.1f} ساعة")
+                col4.metric("التكلفة السنوية", f"{annual_cost_val:,.2f} د.أ")
+                
+                st.markdown("---")
+                st.markdown(f"## 📋 خطوات العملية ({len(steps)} خطوة)")
+                steps_data = []
+                for s in steps:
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        emp_title = emp.title if emp else "-"
+                    steps_data.append({
+                        "#": s.step_order,
+                        "الخطوة": s.step_name,
+                        "النوع": s.step_type,
+                        "الموظف": emp_title,
+                        "وقت العمل": f"{s.processing_time_minutes}د",
+                        "وقت الانتظار": f"{s.wait_time_minutes}د",
+                        "النظام": s.system_used or "-"
+                    })
+                st.dataframe(pd.DataFrame(steps_data), use_container_width=True)
+                
+                st.markdown("---")
+                st.markdown(f"## 🗺️ مخطط التدفق")
+                for i, s in enumerate(steps):
+                    with app.app_context():
+                        emp = Employee.query.get(s.employee_id)
+                        emp_title = emp.title if emp else "-"
+                    
+                    if s.step_type == 'VA':
+                        color = '#2ecc71'
+                        emoji = '✅'
+                    elif s.step_type == 'BNVA':
+                        color = '#f39c12'
+                        emoji = '⚠️'
+                    else:
+                        color = '#e74c3c'
+                        emoji = '❌'
+                    
+                    st.markdown(f"""
+                    <div style="border-left:5px solid {color}; background-color:{color}15; padding:8px; margin:3px 0; border-radius:5px;">
+                        <b>{emoji} {s.step_order}. {s.step_name}</b> ({s.step_type})<br>
+                        <small>👤 {emp_title} | ⏱️ عمل: {s.processing_time_minutes}د | انتظار: {s.wait_time_minutes}د</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if i < len(steps) - 1:
+                        st.markdown("<div style='text-align:center;'>⬇️</div>", unsafe_allow_html=True)
+                
+                st.markdown("---")
+                st.markdown(f"## 💡 توصيات آلية للتحسين")
+                recommendations = []
+                for s in steps:
+                    if s.step_type == 'NVA' and (s.wait_time_minutes or 0) > 1440:
+                        recommendations.append(f"🚀 **أتمتة '{s.step_name}'**: توفير {s.wait_time_minutes} دقيقة عبر التوقيع الإلكتروني.")
+                    elif s.system_used == 'ورقي':
+                        recommendations.append(f"📄 **رقمنة '{s.step_name}'**: تحويلها إلى إلكترونية.")
+                if recommendations:
+                    for r in recommendations:
+                        st.markdown(r)
+                else:
+                    st.success("لا توجد توصيات حرجة.")
+                
+                # زر تحميل التقرير (كنص)
+                report_text = f"""
+                تقرير العملية: {process.name}
+                ================================
+                كفاءة التدفق: {flow_eff:.1f}%
+                زمن الدورة: {lead_time/60:.1f} ساعة
+                وقت الانتظار: {wait/60:.1f} ساعة
+                التكلفة السنوية: {annual_cost_val:,.2f} د.أ
+                
+                خطوات العملية:
+                {chr(10).join([f"{s.step_order}. {s.step_name} ({s.step_type})" for s in steps])}
+                
+                التوصيات:
+                {chr(10).join(recommendations) if recommendations else "لا توجد توصيات حرجة."}
+                """
+                st.download_button("📥 تحميل التقرير (نص)", data=report_text, file_name=f"تقرير_{process.name}.txt", mime="text/plain")
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
