@@ -140,6 +140,7 @@ menu = st.sidebar.radio("القائمة", [
     "🎯 تحليل باريتو (80/20)",
     "📋 SIPOC",
     "📊 RACI",
+    "🗺️ الخريطة الحرارية",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -938,6 +939,45 @@ elif menu == "📊 RACI":
                 st.info("لا يوجد موظفين مرتبطين بهذه العملية.")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== الخريطة الحرارية ==================
+elif menu == "🗺️ الخريطة الحرارية":
+    st.subheader("🗺️ الخريطة الحرارية للعمليات (Process Heatmap)")
+    st.markdown("نظرة شاملة على صحة جميع العمليات. كلما كان اللون أحمر، كانت العملية تعاني من هدر أكبر.")
+
+    all_processes = get_processes()
+    if all_processes:
+        heatmap_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                total_wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                total_processing = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = total_processing + total_wait
+                flow_eff = (total_processing / lead_time * 100) if lead_time > 0 else 100
+                annual_cost = p.annual_cost
+
+            heatmap_data.append({
+                "العملية": p.name,
+                "الفئة": p.category,
+                "كفاءة التدفق %": round(flow_eff, 1),
+                "زمن الدورة (ساعة)": round(lead_time / 60, 1),
+                "وقت الانتظار (ساعة)": round(total_wait / 60, 1),
+                "التكلفة الشاملة (د.أ)": round(annual_cost + (total_wait * 0.1), 0) # تقدير مبسط
+            })
+        
+        df_heatmap = pd.DataFrame(heatmap_data)
+        
+        # تحويل البيانات إلى تنسيق بصري
+        st.dataframe(
+            df_heatmap.style.background_gradient(subset=["كفاءة التدفق %", "زمن الدورة (ساعة)"], cmap="RdYlGn_r")
+            .format("{:.1f}", subset=["كفاءة التدفق %", "زمن الدورة (ساعة)"])
+            .format("{:.0f}", subset=["التكلفة الشاملة (د.أ)"]),
+            use_container_width=True
+        )
+        
+        st.caption("🟢 أخضر = ممتاز | 🟡 أصفر = مقبول | 🔴 أحمر = خطر")
     else:
         st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
