@@ -141,6 +141,7 @@ menu = st.sidebar.radio("القائمة", [
     "📋 SIPOC",
     "📊 RACI",
     "🗺️ الخريطة الحرارية",
+    "🚀 توصيات التحسين",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -987,6 +988,86 @@ elif menu == "🗺️ الخريطة الحرارية":
         st.markdown("- 🟠 **سيء:** خطط لتحسينها هذا الشهر")
         st.markdown("- 🟡 **مقبول:** جدولها للربع القادم")
         st.markdown("- 🟢 **جيد:** راقبها وحافظ على أدائها")
+    else:
+        st.info("لا توجد عمليات بعد.")
+        # ================== توصيات التحسين ==================
+elif menu == "🚀 توصيات التحسين":
+    st.subheader("🚀 توصيات التحسين (To-Be)")
+    st.markdown("خطط للحالة المستقبلية لكل عملية واحسب العائد المتوقع من التحسين.")
+
+    processes = get_processes()
+    if processes:
+        pnames = [f"{p.id} - {p.name}" for p in processes]
+        sel = st.selectbox("اختر العملية", pnames)
+        pid = int(sel.split(" - ")[0])
+        process = get_process_by_id(pid)
+        steps = get_steps(pid)
+
+        if process and steps:
+            with app.app_context():
+                p = Process.query.get(pid)
+                current_eff = p.flow_efficiency
+                current_lead = p.lead_time_minutes
+                current_cost = p.annual_cost
+                
+                total_wait = sum((s.wait_time_minutes or 0) for s in steps)
+                total_proc = sum((s.processing_time_minutes or 0) for s in steps)
+
+            st.markdown("---")
+            st.markdown("### 📊 الحالة الحالية (As-Is)")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("كفاءة التدفق الحالية", f"{current_eff:.1f}%")
+            col2.metric("زمن الدورة الحالي", f"{current_lead/60:.1f} ساعة")
+            col3.metric("التكلفة السنوية الحالية", f"{current_cost:,.2f} د.أ")
+
+            st.markdown("---")
+            st.markdown("### 🎯 الحالة المستقبلية المستهدفة (To-Be)")
+            
+            with st.form("tobe_form"):
+                target_eff = st.slider("كفاءة التدفق المستهدفة (%)", min_value=float(current_eff), max_value=100.0, value=min(float(current_eff) * 5, 85.0), step=1.0)
+                target_lead_hours = st.number_input("زمن الدورة المستهدف (ساعة)", min_value=0.1, value=max(0.5, float(current_lead/60) * 0.2), step=0.5)
+                target_cost = st.number_input("التكلفة السنوية المستهدفة (د.أ)", min_value=0.0, value=float(current_cost) * 0.3, step=100.0)
+                
+                improvement_desc = st.text_area("وصف خطة التحسين", placeholder="مثلاً: تفعيل التوقيع الإلكتروني في Oracle، إلغاء الأرشفة الورقية، دمج خطوتين...")
+                
+                if st.form_submit_button("💾 حفظ التوصية"):
+                    # حساب العائد
+                    saving = current_cost - target_cost
+                    roi = (saving / (current_cost + 1)) * 100
+                    
+                    st.success("تم حفظ التوصية!")
+                    
+                    st.markdown("---")
+                    st.markdown("### 📈 ملخص العائد المتوقع")
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("الوفر السنوي المتوقع", f"{saving:,.2f} د.أ")
+                    c2.metric("تحسين كفاءة التدفق", f"+{target_eff - current_eff:.1f}%")
+                    c3.metric("تقليص زمن الدورة", f"-{current_lead/60 - target_lead_hours:.1f} ساعة")
+                    
+                    st.markdown("---")
+                    st.markdown("### 🖨️ تقرير جاهز للطباعة")
+                    st.info(f"""
+                    **تقرير تحسين عملية: {process.name}**
+                    
+                    **الوضع الحالي:**
+                    - كفاءة التدفق: {current_eff:.1f}%
+                    - زمن الدورة: {current_lead/60:.1f} ساعة
+                    - التكلفة السنوية: {current_cost:,.2f} د.أ
+                    
+                    **الوضع المستهدف:**
+                    - كفاءة التدفق: {target_eff:.1f}%
+                    - زمن الدورة: {target_lead_hours:.1f} ساعة
+                    - التكلفة السنوية: {target_cost:,.2f} د.أ
+                    
+                    **خطة التحسين:** {improvement_desc}
+                    
+                    **العائد المتوقع:**
+                    - وفر سنوي: {saving:,.2f} د.أ
+                    - تحسين الكفاءة: +{target_eff - current_eff:.1f}%
+                    """)
+        else:
+            st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
