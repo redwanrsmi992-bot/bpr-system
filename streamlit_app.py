@@ -941,10 +941,10 @@ elif menu == "📊 RACI":
             st.info("لا توجد خطوات لهذه العملية.")
     else:
         st.info("لا توجد عمليات بعد.")
-        # ================== الخريطة الحرارية ==================
+     # ================== الخريطة الحرارية ==================
 elif menu == "🗺️ الخريطة الحرارية":
-    st.subheader("🗺️ الخريطة الحرارية للعمليات (Process Heatmap)")
-    st.markdown("نظرة شاملة على صحة جميع العمليات. كلما كان اللون أحمر، كانت العملية تعاني من هدر أكبر.")
+    st.subheader("🗺️ الخريطة الحرارية للعمليات")
+    st.markdown("نظرة شاملة على صحة جميع العمليات. ركز على العمليات الحمراء أولاً.")
 
     all_processes = get_processes()
     if all_processes:
@@ -958,26 +958,35 @@ elif menu == "🗺️ الخريطة الحرارية":
                 flow_eff = (total_processing / lead_time * 100) if lead_time > 0 else 100
                 annual_cost = p.annual_cost
 
+            # تحديد مستوى الخطر
+            if flow_eff < 5:
+                risk = "🔴 خطر"
+            elif flow_eff < 20:
+                risk = "🟠 سيء"
+            elif flow_eff < 40:
+                risk = "🟡 مقبول"
+            else:
+                risk = "🟢 جيد"
+
             heatmap_data.append({
                 "العملية": p.name,
                 "الفئة": p.category,
-                "كفاءة التدفق %": round(flow_eff, 1),
+                "كفاءة التدفق %": f"{flow_eff:.1f}%",
                 "زمن الدورة (ساعة)": round(lead_time / 60, 1),
                 "وقت الانتظار (ساعة)": round(total_wait / 60, 1),
-                "التكلفة الشاملة (د.أ)": round(annual_cost + (total_wait * 0.1), 0) # تقدير مبسط
+                "التكلفة الشاملة (د.أ)": round(annual_cost + (total_wait * 0.1), 0),
+                "مستوى الخطر": risk
             })
         
         df_heatmap = pd.DataFrame(heatmap_data)
+        st.dataframe(df_heatmap, use_container_width=True)
         
-        # تحويل البيانات إلى تنسيق بصري
-        st.dataframe(
-            df_heatmap.style.background_gradient(subset=["كفاءة التدفق %", "زمن الدورة (ساعة)"], cmap="RdYlGn_r")
-            .format("{:.1f}", subset=["كفاءة التدفق %", "زمن الدورة (ساعة)"])
-            .format("{:.0f}", subset=["التكلفة الشاملة (د.أ)"]),
-            use_container_width=True
-        )
-        
-        st.caption("🟢 أخضر = ممتاز | 🟡 أصفر = مقبول | 🔴 أحمر = خطر")
+        st.markdown("---")
+        st.markdown("### 🎯 أولويات التحسين")
+        st.markdown("- 🔴 **خطر:** ابدأ بهذه العمليات فوراً")
+        st.markdown("- 🟠 **سيء:** خطط لتحسينها هذا الشهر")
+        st.markdown("- 🟡 **مقبول:** جدولها للربع القادم")
+        st.markdown("- 🟢 **جيد:** راقبها وحافظ على أدائها")
     else:
         st.info("لا توجد عمليات بعد.")
 # ================== دليل الاستخدام ==================
