@@ -492,7 +492,7 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-# ================== لوحة القيادة (النهائية مع وقت الانتظار) ==================
+# ================== لوحة التحكم المتطورة (مصححة) ==================
 elif menu == "لوحة التحكم":
     st.subheader("📊 لوحة القيادة (Executive Dashboard)")
     st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
@@ -500,7 +500,7 @@ elif menu == "لوحة التحكم":
     all_processes = get_processes()
     
     if all_processes:
-        # --- 1. بطاقات الملخص العام (Summary KPIs) ---
+        # --- 1. بطاقات الملخص العام ---
         total_processes = len(all_processes)
         total_waste_minutes = 0
         total_processing_minutes = 0
@@ -526,7 +526,7 @@ elif menu == "لوحة التحكم":
 
         st.markdown("---")
 
-        # --- 2. جدول ملخص العمليات مع وقت الانتظار ---
+        # --- 2. جدول ملخص العمليات ---
         st.subheader("📋 ملخص جميع العمليات")
         summary_data = []
         for proc in all_processes:
@@ -537,15 +537,13 @@ elif menu == "لوحة التحكم":
                 lead_time = proc_time + wait
                 flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
                 
-                # حساب التكلفة يدوياً
                 total_cost_val = 0
                 for s in p.steps:
                     if s.employee and s.processing_time_minutes:
                         total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
                 annual_cost_val = total_cost_val * p.annual_frequency
                 
-                # تقييم الحالة
-                             if flow_eff < 5:
+                if flow_eff < 5:
                     status = "[خطر]"
                 elif flow_eff < 20:
                     status = "[سيء]"
@@ -569,7 +567,7 @@ elif menu == "لوحة التحكم":
 
         st.markdown("---")
 
-        # --- 3. أهم 3 عمليات تحتاج تدخلاً (Pareto Mini) ---
+        # --- 3. أهم 3 عمليات تحتاج تدخلاً ---
         st.subheader("🚨 أهم 3 عمليات تحتاج تدخلاً فورياً")
         pareto_data = []
         for proc in all_processes:
