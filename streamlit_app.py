@@ -1123,12 +1123,19 @@ elif menu == "📊 مخطط BPMN":
                 if i < len(steps) - 1:
                     st.markdown("<div style='text-align:center; color:#7f8c8d;'>⬇️</div>", unsafe_allow_html=True)
             
-            # وسيلة الإيضاح
+                      # وسيلة الإيضاح
             st.markdown("---")
+            st.markdown("### 🔍 وسيلة الإيضاح")
             col1, col2, col3 = st.columns(3)
-            col1.markdown("🟢 **VA:** قيمة مضافة")
-            col2.markdown("🟠 **BNVA:** ضرورية")
-            col3.markdown("🔴 **NVA:** هدر")
+            with col1:
+                st.markdown("#### 🟢 VA (قيمة مضافة)")
+                st.caption("العميل يدفع مقابلها")
+            with col2:
+                st.markdown("#### 🟠 BNVA (ضرورية)")
+                st.caption("إجراء قانوني / رقابي")
+            with col3:
+                st.markdown("#### 🔴 NVA (هدر)")
+                st.caption("يمكن ويجب إلغاؤها")
         else:
             st.info("لا توجد خطوات لهذه العملية.")
     else:
