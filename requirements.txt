@@ -3,3 +3,4 @@ flask-sqlalchemy
 plotly
 pandas
 openpyxl
+fpdf2
