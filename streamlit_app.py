@@ -28,7 +28,96 @@ if not st.session_state.authenticated:
 
 # ---- التطبيق الرئيسي ----
 st.set_page_config(page_title="نظام إعادة هندسة العمليات", layout="wide")
-st.title("نظام إعادة هندسة العمليات - دائرة الموازنة العامة")
+# ============ تحسين الواجهة ============
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Tajawal', sans-serif;
+    }
+    
+    .main {
+        background-color: #f8fafc;
+    }
+    
+    .stButton>button {
+        border-radius: 8px;
+        background-color: #2563eb;
+        color: white;
+        font-weight: bold;
+        border: none;
+        padding: 8px 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton>button:hover {
+        background-color: #1d4ed8;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+    }
+    
+    .stMetric {
+        background-color: white;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .stExpander {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #f1f5f9;
+        border-radius: 8px;
+        padding: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: bold;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #2563eb !important;
+        color: white !important;
+    }
+    
+    h1, h2, h3 {
+        color: #1e293b;
+        font-weight: bold;
+    }
+    
+    .stAlert {
+        border-radius: 8px;
+    }
+    
+    .stDataFrame {
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 4px;
+    }
+</style>
+""", unsafe_allow_html=True)
+# =====================================
+st.title(" نظام إعادة هندسة العمليات ")
 
 if st.sidebar.button("تسجيل الخروج"):
     st.session_state.authenticated = False
