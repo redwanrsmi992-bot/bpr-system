@@ -956,7 +956,7 @@ elif menu == "🎯 تحليل باريتو (80/20)":
         # ================== SIPOC ==================
 elif menu == "📋 SIPOC":
     st.subheader("📋 تحليل SIPOC")
-    st.markdown("نظرة شاملة للعملية: الجهة المعنية، المدخلات، العملية، المخرجات، العملاء.")
+    st.markdown("نظرة شاملة للعملية: الجهة المعنية، المدخلات، العملية، المخرجات، متلقي الخدمة.")
 
     processes = get_processes()
     if processes:
@@ -985,14 +985,14 @@ elif menu == "📋 SIPOC":
                     proc = st.text_area("**P - العملية (Process)**", value=process_desc, height=100)
                 with col2:
                     outp = st.text_area("**O - المخرجات (Outputs)**", value=outputs_list, height=100)
-                    cust = st.text_area("**C - العملاء (Customers)**", value=customers, height=100)
+                    cust = st.text_area("**C - متلقي الخدمة (Customers)**", value=customers, height=100)
 
                 if st.form_submit_button("💾 حفظ وعرض SIPOC"):
                     st.success("تم تحديث SIPOC")
                     
                     # عرض الجدول النهائي
                     df_sipoc = pd.DataFrame({
-                        "المكون": ["S - الجهة المعنية", "I - المدخلات", "P - العملية", "O - المخرجات", "C - العملاء"],
+                        "المكون": ["S - الجهة المعنية", "I - المدخلات", "P - العملية", "O - المخرجات", "C - متلقي الخدمة"],
                         "الوصف": [sup, inp, proc, outp, cust]
                     })
                     st.dataframe(df_sipoc, use_container_width=True)
@@ -1323,7 +1323,7 @@ elif menu == "📄 تقرير العملية":
                     st.markdown(f"**P - العملية:** {process_desc}")
                 with col_i:
                     st.markdown(f"**O - المخرجات:** {outputs_list}")
-                    st.markdown(f"**C - العملاء:** {customers}")
+                    st.markdown(f"**C - متلقي الخدمة:** {customers}")
                 
                 st.markdown("---")
                 st.markdown(f"## 📊 مؤشرات الأداء الرئيسية")
@@ -1515,7 +1515,7 @@ elif menu == "📄 تقرير PDF":
     <p><b>I - المدخلات:</b> طلب مكتمل، مستندات ثبوتية</p>
     <p><b>P - العملية:</b> {' → '.join([s.step_name for s in steps])}</p>
     <p><b>O - المخرجات:</b> معاملة منجزة، إشعار</p>
-    <p><b>C - العملاء:</b> المستفيد النهائي، جهة رقابية</p>
+    <p><b>C - متلقي الخدمة:</b> المستفيد النهائي، جهة رقابية</p>
 
     <h2 class="section-title">🗺️ خطوات العملية ({len(steps)} خطوة)</h2>
     <table>
