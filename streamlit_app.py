@@ -974,7 +974,7 @@ elif menu == "📋 SIPOC":
             process_desc = " → ".join([s.step_name for s in steps])
             
             outputs_list = "معاملة منجزة، إشعار إلكتروني"
-            customers = "المستفيد النهائي، جهة رقابية، ديوان المحاسبة"
+            customers = "متلقي الخدمة، جهة رقابية، ديوان المحاسبة"
 
             with st.form("sipoc_form"):
                 st.subheader("✏️ عدل جدول SIPOC")
@@ -1311,7 +1311,7 @@ elif menu == "📄 تقرير العملية":
                 inputs_list = "طلب مكتمل، مستندات ثبوتية"
                 process_desc = " → ".join([s.step_name for s in steps])
                 outputs_list = "معاملة منجزة، إشعار"
-                customers = "المستفيد النهائي، جهة رقابية"
+                customers = "متلقي الخدمة، جهة رقابية"
 
             # --- تجميع التقرير في بطاقة واحدة ---
             with st.expander(f"📄 تقرير: {process.name}", expanded=True):
@@ -1515,7 +1515,7 @@ elif menu == "📄 تقرير PDF":
     <p><b>I - المدخلات:</b> طلب مكتمل، مستندات ثبوتية</p>
     <p><b>P - العملية:</b> {' → '.join([s.step_name for s in steps])}</p>
     <p><b>O - المخرجات:</b> معاملة منجزة، إشعار</p>
-    <p><b>C - متلقي الخدمة:</b> المستفيد النهائي، جهة رقابية</p>
+    <p><b>C - متلقي الخدمة:</b> متلقي الخدمة، جهة رقابية</p>
 
     <h2 class="section-title">🗺️ خطوات العملية ({len(steps)} خطوة)</h2>
     <table>
