@@ -238,6 +238,7 @@ menu = st.sidebar.radio("القائمة", [
     "📄 تقرير العملية",
     "📄 تقرير PDF",
     "📄 رفع نموذج Word",
+    "📊 لوحة القيادة الشاملة",
     "دليل الاستخدام"
 ])
 # ================== الصفحة الرئيسية ==================
@@ -1607,6 +1608,123 @@ elif menu == "📄 رفع نموذج Word":
             st.error("⚠️ مكتبة python-docx غير مثبتة. أضفها إلى requirements.txt.")
         except Exception as e:
             st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+            # ================== لوحة القيادة الشاملة ==================
+elif menu == "📊 لوحة القيادة الشاملة":
+    st.subheader("📊 لوحة القيادة الشاملة")
+    st.markdown("جميع مؤشرات النظام في صفحة واحدة.")
+
+    all_processes = get_processes()
+    if all_processes:
+        # --- 1. بطاقات الملخص العام ---
+        total_processes = len(all_processes)
+        total_wait = 0
+        total_proc = 0
+        total_cost = 0
+        
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                total_wait += wait
+                total_proc += proc_time
+                total_cost += p.annual_cost
+        
+        avg_flow = (total_proc / (total_proc + total_wait) * 100) if (total_proc + total_wait) > 0 else 0
+
+        st.markdown("### 🎯 ملخص الأداء العام")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("📋 إجمالي العمليات", total_processes)
+        col2.metric("⚡ متوسط كفاءة التدفق", f"{avg_flow:.1f}%")
+        col3.metric("⏳ إجمالي وقت الهدر", f"{total_wait:,.0f} دقيقة")
+        col4.metric("💸 إجمالي التكلفة السنوية", f"{total_cost:,.2f} د.أ")
+
+        st.markdown("---")
+
+        # --- 2. جدول ملخص العمليات ---
+        st.subheader("📋 ملخص جميع العمليات")
+        summary_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+                annual_cost = p.annual_cost
+                
+                if flow_eff < 5:
+                    status = "خطر"
+                elif flow_eff < 20:
+                    status = "سيء"
+                elif flow_eff < 40:
+                    status = "مقبول"
+                else:
+                    status = "جيد"
+                    
+            summary_data.append({
+                "العملية": p.name,
+                "الفئة": p.category,
+                "وقت الانتظار": f"{wait:,.0f} دقيقة",
+                "كفاءة التدفق": f"{flow_eff:.1f}%",
+                "زمن الدورة": f"{lead_time/60:.1f} ساعة",
+                "التكلفة السنوية": f"{annual_cost:,.2f} د.أ",
+                "الحالة": status
+            })
+        df_summary = pd.DataFrame(summary_data)
+        st.dataframe(df_summary, use_container_width=True)
+
+        st.markdown("---")
+
+        # --- 3. تحليل باريتو ---
+        st.subheader("🎯 تحليل باريتو (80/20)")
+        pareto_data = []
+        for proc in all_processes:
+            wait = sum((s.wait_time_minutes or 0) for s in get_steps(proc.id))
+            pareto_data.append({"name": proc.name, "waste": wait})
+        df_pareto = pd.DataFrame(pareto_data).sort_values(by="waste", ascending=False)
+        if not df_pareto.empty and df_pareto["waste"].sum() > 0:
+            df_pareto["تراكمي"] = (df_pareto["waste"].cumsum() / df_pareto["waste"].sum() * 100)
+        else:
+            df_pareto["تراكمي"] = 0
+
+        fig_pareto = go.Figure()
+        fig_pareto.add_trace(go.Bar(name="وقت الهدر (دقيقة)", x=df_pareto["name"], y=df_pareto["waste"], marker_color="#e74c3c"))
+        fig_pareto.add_trace(go.Scatter(name="النسبة التراكمية %", x=df_pareto["name"], y=df_pareto["تراكمي"], yaxis="y2", marker_color="#3498db"))
+        fig_pareto.update_layout(height=350, yaxis2=dict(overlaying="y", side="right", range=[0, 100]))
+        st.plotly_chart(fig_pareto, use_container_width=True)
+
+        # --- 4. أهم 3 عمليات ---
+        st.subheader("🚨 أهم 3 عمليات تحتاج تدخلاً")
+        if not df_pareto.empty:
+            cols = st.columns(3)
+            for i, (_, row) in enumerate(df_pareto.head(3).iterrows()):
+                with cols[i]:
+                    st.error(f"**#{i+1}: {row['name']}**")
+                    st.metric("وقت الهدر", f"{row['waste']:,.0f} دقيقة")
+
+        st.markdown("---")
+
+        # --- 5. خريطة حرارية مصغرة ---
+        st.subheader("🗺️ الخريطة الحرارية")
+        heatmap_data = []
+        for proc in all_processes:
+            with app.app_context():
+                p = Process.query.get(proc.id)
+                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
+                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
+                lead_time = proc_time + wait
+                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
+            heatmap_data.append({
+                "العملية": p.name,
+                "كفاءة التدفق": f"{flow_eff:.1f}%",
+                "زمن الدورة (ساعة)": round(lead_time / 60, 1),
+                "وقت الانتظار (ساعة)": round(wait / 60, 1)
+            })
+        st.dataframe(pd.DataFrame(heatmap_data), use_container_width=True)
+
+    else:
+        st.info("لا توجد عمليات بعد. أضف عمليات من القائمة الجانبية.")
 # ================== دليل الاستخدام ==================
 elif menu == "دليل الاستخدام":
     st.subheader("دليل استخدام نظام اعادة هندسة العمليات")
