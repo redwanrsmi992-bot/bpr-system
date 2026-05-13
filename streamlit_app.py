@@ -171,6 +171,9 @@ def update_process_in_db(pid, name, category, freq, status):
 
 def delete_process_from_db(pid):
     with app.app_context():
+        # 1. حذف جميع الخطوات المرتبطة بالعملية أولاً
+        Step.query.filter_by(process_id=pid).delete()
+        # 2. ثم حذف العملية نفسها
         p = Process.query.get(pid)
         if p:
             db.session.delete(p)
