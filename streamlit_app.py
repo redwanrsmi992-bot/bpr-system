@@ -938,7 +938,7 @@ elif menu == "📋 SIPOC":
             process_desc = " → ".join([s.step_name for s in steps])
             
             outputs_list = "معاملة منجزة، إشعار إلكتروني"
-            customers = "متلقي الخدمة، جهة رقابية، ديوان المحاسبة"
+            customers = "نفس الجهة المعنية (متلقي الخدمة)"
 
             with st.form("sipoc_form"):
                 st.subheader("✏️ عدل جدول SIPOC")
