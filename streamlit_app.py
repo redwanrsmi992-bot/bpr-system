@@ -282,7 +282,7 @@ if menu == "الرئيسية":
                             if st.form_submit_button("❌ الغاء"):
                                 st.session_state[f"editing_{p.id}"] = False
                                 st.rerun()
-                                if st.button("🔄 إعادة ترقيم العمليات"):
+                            if st.button("🔄 إعادة ترقيم العمليات"):
     with app.app_context():
         processes = Process.query.order_by(Process.id).all()
         for i, p in enumerate(processes, 1):
