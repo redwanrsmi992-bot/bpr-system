@@ -247,11 +247,21 @@ if menu == "الرئيسية":
             with app.app_context():
                 eff = Process.query.get(p.id).flow_efficiency
                 cost = Process.query.get(p.id).annual_cost
-            with st.expander(f"{p.id} - {p.name} ({p.category})"):
+                     with st.expander(f"{p.id} - {p.name} ({p.category})"):
                 col1, col2, col3 = st.columns(3)
                 col1.metric("كفاءة التدفق", f"{eff:.2f}%")
-                col2.metric("التكلفة السنوية", f"{cost:,.2f} د.ا")
+                col2.metric("التكلفة السنوية", f"{cost:,.2f} د.أ")
                 col3.metric("التكرار السنوي", p.annual_frequency)
+                
+                col_edit, col_del = st.columns(2)
+                with col_edit:
+                    if st.button("✏️ تعديل", key=f"edit_{p.id}"):
+                        st.session_state[f"editing_{p.id}"] = True
+                with col_del:
+                    if st.button("🗑️ حذف", key=f"del_{p.id}"):
+                        delete_process_from_db(p.id)
+                        st.success("تم الحذف!")
+                        st.rerun()
     else:
         st.info("لا توجد عمليات بعد.")
             # ---- حذف جميع العمليات ----
