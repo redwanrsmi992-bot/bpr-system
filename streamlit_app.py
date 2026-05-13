@@ -243,11 +243,13 @@ if menu == "الرئيسية":
     
     processes = get_processes()
     if processes:
-        for p in processes:
+        sorted_processes = sorted(processes, key=lambda x: x.id)
+        
+        for display_index, p in enumerate(sorted_processes, 1):
             with app.app_context():
                 eff = Process.query.get(p.id).flow_efficiency
                 cost = Process.query.get(p.id).annual_cost
-            with st.expander(f"{p.id} - {p.name} ({p.category})"):
+            with st.expander(f"{display_index} - {p.name} ({p.category})"):
                 col1, col2, col3 = st.columns(3)
                 col1.metric("كفاءة التدفق", f"{eff:.2f}%")
                 col2.metric("التكلفة السنوية", f"{cost:,.2f} د.ا")
@@ -282,21 +284,8 @@ if menu == "الرئيسية":
                             if st.form_submit_button("❌ الغاء"):
                                 st.session_state[f"editing_{p.id}"] = False
                                 st.rerun()
-                                  
     else:
         st.info("لا توجد عمليات بعد.")
-        # ---- إعادة ترقيم العمليات ----
-    with st.expander("🔄 إعادة ترقيم العمليات", expanded=False):
-        st.markdown("هذا الزر يعيد ترقيم العمليات المتبقية بعد حذف بعضها.")
-        if st.button("🔄 إعادة ترقيم العمليات"):
-            with app.app_context():
-                processes = Process.query.order_by(Process.id).all()
-                for i, p in enumerate(processes, 1):
-                    p.id = i
-                db.session.commit()
-            st.success("✅ تم إعادة ترقيم العمليات!")
-            st.rerun()
-
 # ================== اضافة موظف ==================
 elif menu == "اضافة موظف":
     st.subheader("ادارة الموظفين")
