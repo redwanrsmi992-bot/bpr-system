@@ -254,6 +254,19 @@ if menu == "الرئيسية":
                 col3.metric("التكرار السنوي", p.annual_frequency)
     else:
         st.info("لا توجد عمليات بعد.")
+            # ---- حذف جميع العمليات ----
+    if processes:
+        with st.expander("⚠️ منطقة الخطر - حذف البيانات", expanded=False):
+            st.warning("هذا الإجراء لا يمكن التراجع عنه!")
+            col_del_all, col_empty = st.columns([1, 3])
+            with col_del_all:
+                if st.button("🗑️ حذف جميع العمليات", type="secondary", use_container_width=True):
+                    with app.app_context():
+                        Step.query.delete()
+                        Process.query.delete()
+                        db.session.commit()
+                    st.success("✅ تم حذف جميع العمليات والخطوات بنجاح!")
+                    st.rerun()
 
     # ---- استيراد وتصدير ----
     with st.expander("💾 حفظ واستعادة البيانات", expanded=False):
