@@ -705,11 +705,10 @@ elif menu == "مصفوفة الاثر والتاثير":
         st.info("لا توجد عمليات بعد")
 
 # ================== رفع ملف عمليات ==================
-# ================== رفع ملف عمليات ==================
-# ================== رفع ملف عمليات (تلقائي) ==================
+# ================== رفع ملف عمليات (مع الراتب) ==================
 elif menu == "رفع ملف عمليات":
     st.subheader("رفع ملف عمليات (Excel/CSV)")
-    st.markdown("ارفع ملف Excel أو CSV. سيقرأ النظام أول ورقتين تلقائياً.")
+    st.markdown("ارفع ملف Excel أو CSV. سيقرأ النظام أول ورقتين تلقائياً. يجب أن يحتوي جدول الخطوات على عمود 'الراتب'.")
 
     uploaded_file = st.file_uploader("اختر ملف Excel أو CSV", type=["xlsx", "csv"])
 
@@ -758,9 +757,9 @@ elif menu == "رفع ملف عمليات":
                         db.session.commit()
                         process_id = new_process.id
 
-                    # استيراد الخطوات
+                    # استيراد الموظفين والخطوات
                     steps_added = 0
-                    skipped_employees = []
+                    employees_added = 0
                     
                     for _, row in df_steps.iterrows():
                         step_order = int(row['رقم الترتيب'])
@@ -771,14 +770,19 @@ elif menu == "رفع ملف عمليات":
                         system_used = str(row.get('النظام', ''))
                         waste_cat = str(row.get('فئة الهدر', '')) if pd.notna(row.get('فئة الهدر', None)) else ''
                         emp_name = str(row.get('الموظف', ''))
+                        emp_salary = float(row.get('الراتب', 0))
 
-                        # البحث عن الموظف
+                        # البحث عن الموظف أو إنشاؤه بالراتب المحدد
                         employee = Employee.query.filter_by(title=emp_name).first()
                         
-                        if not employee and emp_name:
-                            # لا ننشئ موظفاً تلقائياً - نتخطى هذه الخطوة
-                            if emp_name not in skipped_employees:
-                                skipped_employees.append(emp_name)
+                        if not employee and emp_name and emp_salary > 0:
+                            employee = Employee(title=emp_name, monthly_cost=emp_salary)
+                            db.session.add(employee)
+                            db.session.commit()
+                            employees_added += 1
+                        elif not employee and emp_name and emp_salary == 0:
+                            if emp_name not in getattr(st.session_state, 'skipped', []):
+                                st.warning(f"⚠️ الموظف '{emp_name}' بدون راتب. تم تخطيه.")
                             continue
                         
                         emp_id = employee.id if employee else None
@@ -799,10 +803,8 @@ elif menu == "رفع ملف عمليات":
 
                     db.session.commit()
 
-                if skipped_employees:
-                    st.warning(f"⚠️ تم تخطي الموظفين التاليين لأنهم غير موجودين في قاعدة البيانات. يرجى إضافتهم يدوياً أولاً: {', '.join(skipped_employees)}")
-                
-                st.success(f"تم استيراد العملية '{process_name}' بنجاح مع {steps_added} خطوة!")
+                st.success(f"🎉 تم استيراد العملية '{process_name}' بنجاح!")
+                st.info(f"📊 {steps_added} خطوة | 👤 {employees_added} موظف جديد")
                 st.balloons()
 
         except Exception as e:
