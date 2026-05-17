@@ -791,7 +791,6 @@ elif menu == "رفع ملف عمليات":
                 df_process = pd.read_csv(uploaded_file, nrows=1)
                 df_steps = pd.read_csv(uploaded_file, skiprows=2)
             else:
-                # قراءة جميع أسماء الأوراق
                 xl = pd.ExcelFile(uploaded_file)
                 sheet_names = xl.sheet_names
                 
@@ -833,6 +832,8 @@ elif menu == "رفع ملف عمليات":
 
                     # استيراد الخطوات
                     steps_added = 0
+                    skipped_employees = []
+                    
                     for _, row in df_steps.iterrows():
                         step_order = int(row['رقم الترتيب'])
                         step_name = str(row['اسم الخطوة'])
@@ -843,13 +844,15 @@ elif menu == "رفع ملف عمليات":
                         waste_cat = str(row.get('فئة الهدر', '')) if pd.notna(row.get('فئة الهدر', None)) else ''
                         emp_name = str(row.get('الموظف', ''))
 
-                        # البحث عن الموظف أو إنشاؤه
+                        # البحث عن الموظف
                         employee = Employee.query.filter_by(title=emp_name).first()
+                        
                         if not employee and emp_name:
-                            employee = Employee(title=emp_name, monthly_cost=500)
-                            db.session.add(employee)
-                            db.session.commit()
-
+                            # لا ننشئ موظفاً تلقائياً - نتخطى هذه الخطوة
+                            if emp_name not in skipped_employees:
+                                skipped_employees.append(emp_name)
+                            continue
+                        
                         emp_id = employee.id if employee else None
 
                         new_step = Step(
@@ -868,6 +871,9 @@ elif menu == "رفع ملف عمليات":
 
                     db.session.commit()
 
+                if skipped_employees:
+                    st.warning(f"⚠️ تم تخطي الموظفين التاليين لأنهم غير موجودين في قاعدة البيانات. يرجى إضافتهم يدوياً أولاً: {', '.join(skipped_employees)}")
+                
                 st.success(f"تم استيراد العملية '{process_name}' بنجاح مع {steps_added} خطوة!")
                 st.balloons()
 
