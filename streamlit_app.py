@@ -171,15 +171,17 @@ def update_process_in_db(pid, name, category, freq, status):
 
 def delete_process_from_db(pid):
     with app.app_context():
-        # 1. حذف جميع الخطوات المرتبطة بالعملية أولاً
         Step.query.filter_by(process_id=pid).delete()
-        # 2. ثم حذف العملية نفسها
         p = Process.query.get(pid)
         if p:
             db.session.delete(p)
             db.session.commit()
             return True
         return False
+
+def get_employees():
+    with app.app_context():
+        return Employee.query.all()
 
 def add_employee_to_db(title, cost):
     with app.app_context():
@@ -205,10 +207,6 @@ def delete_employee_from_db(eid):
             db.session.commit()
             return True
         return False
-
-def get_employees():
-    with app.app_context():
-        return Employee.query.all()
 
 def add_step_to_db(pid, eid, order, name, pt, wt, stype, sys_used, waste):
     with app.app_context():
