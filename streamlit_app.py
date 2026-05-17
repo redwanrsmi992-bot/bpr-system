@@ -297,7 +297,7 @@ elif menu == "اضافة موظف":
     with st.expander("اضافة موظف جديد", expanded=False):
         with st.form("add_emp"):
             title = st.text_input("المسمى الوظيفي")
-            cost = st.number_input("الراتب الشهري (دينار)", min_value=100, value=500)
+            cost = st.number_input("الراتب الشهري (دينار)", min_value=0, value=0, step=50)
             if st.form_submit_button("حفظ"):
                 if title:
                     add_employee_to_db(title, float(cost))
@@ -315,7 +315,6 @@ elif menu == "اضافة موظف":
                     delete_employee_from_db(e.id)
                     st.success("تم الحذف")
                     st.rerun()
-
 # ================== اضافة عملية ==================
 elif menu == "اضافة عملية":
     st.subheader("اضافة عملية جديدة")
