@@ -408,12 +408,12 @@ elif menu == "اضافة خطوات":
                     - إذا كان الجواب **لا، ويمكن الاستغناء عنها** → NVA
                     """)
 
-    # ---- تبويبة العرض والتعديل ----
+       # ---- تبويبة العرض والتعديل ----
     with tab2:
-        processes = get_processes()
-        if processes:
-            pnames = [f"{p.id} - {p.name}" for p in processes]
-            sel_process = st.selectbox("اختر العملية لعرض خطواتها", pnames, key="view_steps")
+        all_procs = get_processes()
+        if all_procs:
+            pnames = [f"{p.id} - {p.name}" for p in all_procs]
+            sel_process = st.selectbox("اختر العملية لعرض خطواتها", pnames, key="view_steps_tab")
             pid = int(sel_process.split(" - ")[0])
             steps = get_steps(pid)
             
@@ -434,7 +434,6 @@ elif menu == "اضافة خطوات":
                             - **الهدر:** {s.waste_category or '-'}
                             """)
                         with col_actions:
-                            # تعديل وحذف (خارج form)
                             if st.button("✏️ تعديل", key=f"edit_step_{s.id}"):
                                 st.session_state[f"editing_step_{s.id}"] = True
                             if st.button("🗑️ حذف", key=f"del_step_{s.id}"):
@@ -450,7 +449,7 @@ elif menu == "اضافة خطوات":
                             with st.form(f"edit_step_form_{s.id}"):
                                 employees = get_employees()
                                 enames = [f"{e.id} - {e.title}" for e in employees]
-                                current_emp = f"{s.employee_id} - {emp_title}" if s.employee_id else enames[0]
+                                current_emp = f"{s.employee_id} - {emp_title}" if s.employee_id else (enames[0] if enames else "")
                                 new_eid_sel = st.selectbox("الموظف", enames, index=enames.index(current_emp) if current_emp in enames else 0)
                                 new_order = st.number_input("رقم الترتيب", min_value=1, value=s.step_order)
                                 new_name = st.text_input("اسم الخطوة", value=s.step_name)
@@ -486,98 +485,6 @@ elif menu == "اضافة خطوات":
                 st.info("لا توجد خطوات لهذه العملية")
         else:
             st.info("لا توجد عمليات بعد")
-elif menu == "لوحة التحكم":
-    st.subheader("📊 لوحة القيادة")
-    st.markdown("نظرة شاملة على أداء جميع العمليات في الدائرة.")
-
-    all_processes = get_processes()
-    
-    if all_processes:
-        total_processes = len(all_processes)
-        total_waste_minutes = 0
-        total_processing_minutes = 0
-        total_annual_cost_comprehensive = 0
-        
-        for proc in all_processes:
-            with app.app_context():
-                p = Process.query.get(proc.id)
-                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
-                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
-                total_waste_minutes += wait
-                total_processing_minutes += proc_time
-                total_annual_cost_comprehensive += (proc_time + wait) * 0.1 * p.annual_frequency
-
-        avg_flow_eff = (total_processing_minutes / (total_processing_minutes + total_waste_minutes) * 100) if (total_processing_minutes + total_waste_minutes) > 0 else 0
-        
-        st.markdown("### 🎯 ملخص الأداء العام")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("📋 إجمالي العمليات", total_processes)
-        col2.metric("⚡ متوسط كفاءة التدفق", f"{avg_flow_eff:.1f}%")
-        col3.metric("⏳ إجمالي وقت الهدر", f"{total_waste_minutes:,.0f} دقيقة")
-        col4.metric("💸 إجمالي التكلفة الشاملة", f"{total_annual_cost_comprehensive:,.2f} د.أ")
-
-        st.markdown("---")
-
-        st.subheader("📋 ملخص جميع العمليات")
-        summary_data = []
-        for proc in all_processes:
-            with app.app_context():
-                p = Process.query.get(proc.id)
-                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
-                proc_time = sum((s.processing_time_minutes or 0) for s in p.steps)
-                lead_time = proc_time + wait
-                flow_eff = (proc_time / lead_time * 100) if lead_time > 0 else 100
-                
-                total_cost_val = 0
-                for s in p.steps:
-                    if s.employee and s.processing_time_minutes:
-                        total_cost_val += (s.processing_time_minutes * s.employee.cost_per_minute)
-                annual_cost_val = total_cost_val * p.annual_frequency
-                
-                if flow_eff < 5:
-                    status = "خطر"
-                elif flow_eff < 20:
-                    status = "سيء"
-                elif flow_eff < 40:
-                    status = "مقبول"
-                else:
-                    status = "جيد"
-
-            summary_data.append({
-                "العملية": p.name,
-                "الفئة": p.category,
-                "وقت الانتظار": f"{wait:,.0f} دقيقة",
-                "كفاءة التدفق": f"{flow_eff:.1f}%",
-                "زمن الدورة": f"{lead_time/60:.1f} ساعة",
-                "التكلفة السنوية": f"{annual_cost_val:,.2f} د.أ",
-                "الحالة": status
-            })
-        
-        df_summary = pd.DataFrame(summary_data)
-        st.dataframe(df_summary, use_container_width=True)
-
-        st.markdown("---")
-
-        st.subheader("🚨 أهم 3 عمليات تحتاج تدخلاً فورياً")
-        pareto_data = []
-        for proc in all_processes:
-            with app.app_context():
-                p = Process.query.get(proc.id)
-                wait = sum((s.wait_time_minutes or 0) for s in p.steps)
-            pareto_data.append({"name": p.name, "waste": wait})
-        
-        df_pareto = pd.DataFrame(pareto_data).sort_values(by="waste", ascending=False).head(3)
-        
-        if not df_pareto.empty:
-            cols = st.columns(3)
-            for i, (_, row) in enumerate(df_pareto.iterrows()):
-                with cols[i]:
-                    st.error(f"**#{i+1}: {row['name']}**")
-                    st.metric("⏳ وقت الهدر", f"{row['waste']:,.0f} دقيقة")
-                    st.caption("ابدأ بتحسين هذه العملية فوراً.")
-
-    else:
-        st.info("لا توجد عمليات بعد.")
 
 # ================== رحلة متلقي الخدمة ==================
 elif menu == "رحلة متلقي الخدمة":
